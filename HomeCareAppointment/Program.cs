@@ -1,3 +1,6 @@
+using HomeCareAppointment.Models;
+using Microsoft.EntityFrameworkCore;
+
 namespace HomeCareAppointment
 {
     public class Program
@@ -6,8 +9,14 @@ namespace HomeCareAppointment
         {
             var builder = WebApplication.CreateBuilder(args);
 
+
             // Add services to the container.
             builder.Services.AddControllersWithViews();
+
+            builder.Services.AddDbContext<AvailableDayDbContext>(options => {
+                options.UseSqlite(
+                    builder.Configuration["ConnectionStrings:AvailableDayDbContextConnection"]);
+            });
 
             var app = builder.Build();
 
