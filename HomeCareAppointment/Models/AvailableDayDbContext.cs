@@ -1,6 +1,4 @@
-﻿using HomeCareAppointment.Models;
-using Microsoft.EntityFrameworkCore;
-
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace HomeCareAppointment.Models
 {
@@ -11,7 +9,6 @@ namespace HomeCareAppointment.Models
         public AvailableDayDbContext(DbContextOptions<AvailableDayDbContext> options)
             : base(options)
         {
-            Database.EnsureCreated();
         }
     }
 }
