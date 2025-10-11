@@ -8,7 +8,7 @@
         public int PersonnelId { get; set; }
 
         // Navigation property
-        public Personnel? Personnel { get; set; }
+        public virtual Personnel? Personnel { get; set; }
 
 
         

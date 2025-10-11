@@ -6,6 +6,6 @@
         public string Name { get; set; } = "";
 
         // Navigation property (one-to-many)
-        public ICollection<AvailableDay>? AvailableDays { get; set; }
+        public virtual ICollection<AvailableDay>? AvailableDays { get; set; }
     }
 }
