@@ -21,7 +21,8 @@ namespace HomeCareAppointment.Controllers
         // GET: AvailableDays
         public async Task<IActionResult> Index()
         {
-            return View(await _context.AvailableDays.ToListAsync());
+            var availableDayDbContext = _context.AvailableDays.Include(a => a.Personnel);
+            return View(await availableDayDbContext.ToListAsync());
         }
 
         // GET: AvailableDays/Details/5
@@ -33,6 +34,7 @@ namespace HomeCareAppointment.Controllers
             }
 
             var availableDay = await _context.AvailableDays
+                .Include(a => a.Personnel)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (availableDay == null)
             {
@@ -45,6 +47,7 @@ namespace HomeCareAppointment.Controllers
         // GET: AvailableDays/Create
         public IActionResult Create()
         {
+            ViewData["PersonnelId"] = new SelectList(_context.Personnels, "Id", "Name");
             return View();
         }
 
@@ -53,7 +56,7 @@ namespace HomeCareAppointment.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,PersonnelName,Date,StartTime,EndTime,IsBooked")] AvailableDay availableDay)
+        public async Task<IActionResult> Create([Bind("Id,PersonnelId,Date,StartTime,EndTime,IsBooked")] AvailableDay availableDay)
         {
             if (ModelState.IsValid)
             {
@@ -61,6 +64,7 @@ namespace HomeCareAppointment.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+            ViewData["PersonnelId"] = new SelectList(_context.Personnels, "Id", "Name", availableDay.PersonnelId);
             return View(availableDay);
         }
 
@@ -77,6 +81,7 @@ namespace HomeCareAppointment.Controllers
             {
                 return NotFound();
             }
+            ViewData["PersonnelId"] = new SelectList(_context.Personnels, "Id", "Name", availableDay.PersonnelId);
             return View(availableDay);
         }
 
@@ -85,7 +90,7 @@ namespace HomeCareAppointment.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,PersonnelName,Date,StartTime,EndTime,IsBooked")] AvailableDay availableDay)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,PersonnelId,Date,StartTime,EndTime,IsBooked")] AvailableDay availableDay)
         {
             if (id != availableDay.Id)
             {
@@ -112,6 +117,7 @@ namespace HomeCareAppointment.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+            ViewData["PersonnelId"] = new SelectList(_context.Personnels, "Id", "Name", availableDay.PersonnelId);
             return View(availableDay);
         }
 
@@ -124,6 +130,7 @@ namespace HomeCareAppointment.Controllers
             }
 
             var availableDay = await _context.AvailableDays
+                .Include(a => a.Personnel)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (availableDay == null)
             {

@@ -3,6 +3,7 @@ using System;
 using HomeCareAppointment.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HomeCareAppointment.Migrations
 {
     [DbContext(typeof(AvailableDayDbContext))]
-    partial class AvailableDayDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251011161836_HomeCareDbExpanded")]
+    partial class HomeCareDbExpanded
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.20");
@@ -32,9 +35,6 @@ namespace HomeCareAppointment.Migrations
                     b.Property<bool>("IsBooked")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("PersonnelId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("PersonnelName")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -44,40 +44,7 @@ namespace HomeCareAppointment.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PersonnelId");
-
                     b.ToTable("AvailableDays");
-                });
-
-            modelBuilder.Entity("HomeCareAppointment.Models.Personnel", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Personnels");
-                });
-
-            modelBuilder.Entity("HomeCareAppointment.Models.AvailableDay", b =>
-                {
-                    b.HasOne("HomeCareAppointment.Models.Personnel", "Personnel")
-                        .WithMany("AvailableDays")
-                        .HasForeignKey("PersonnelId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Personnel");
-                });
-
-            modelBuilder.Entity("HomeCareAppointment.Models.Personnel", b =>
-                {
-                    b.Navigation("AvailableDays");
                 });
 #pragma warning restore 612, 618
         }

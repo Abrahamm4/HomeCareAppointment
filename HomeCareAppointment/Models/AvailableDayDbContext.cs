@@ -6,6 +6,8 @@ namespace HomeCareAppointment.Models
     {
         public DbSet<AvailableDay> AvailableDays { get; set; }
 
+        public DbSet<Personnel> Personnels { get; set; }
+
         public AvailableDayDbContext(DbContextOptions<AvailableDayDbContext> options)
             : base(options)
         {
