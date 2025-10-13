@@ -26,7 +26,10 @@ namespace HomeCareAppointment
                 app.UseExceptionHandler("/Home/Error");
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
+
+                ///DBInit.Seed(app);
             }
+            DBInit.Seed(app);
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
