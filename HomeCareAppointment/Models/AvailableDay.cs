@@ -15,8 +15,11 @@
         public DateTime Date { get; set; }
         public TimeSpan StartTime { get; set; }
         public TimeSpan EndTime { get; set; }
-        public bool IsBooked { get; set; }
 
-        //  public ICollection<Appointment>? Appointments { get; set; }
+
+        public bool IsBooked { get; set; }
+        // Computed property: true if any appointment exists
+       // public bool IsBooked => Appointments.Any();
+        public virtual ICollection<Appointment>? Appointments { get; set; }
     }
 }

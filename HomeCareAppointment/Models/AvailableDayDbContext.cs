@@ -7,6 +7,10 @@ namespace HomeCareAppointment.Models
         public DbSet<AvailableDay> AvailableDays { get; set; }
         public DbSet<Personnel> Personnels { get; set; }
 
+        public DbSet<Appointment> Appointments { get; set; }
+
+        public DbSet<Patient> Patients { get; set; }
+
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             optionsBuilder.UseLazyLoadingProxies();

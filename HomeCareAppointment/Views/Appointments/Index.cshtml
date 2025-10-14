@@ -1,0 +1,36 @@
+﻿@model IEnumerable<HomeCareAppointment.Models.AvailableDay>
+
+@{
+    ViewData["Title"] = "Available Slots";
+}
+
+<h1>Available Slots</h1>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Personnel</th>
+            <th>Date</th>
+            <th>Start</th>
+            <th>End</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var day in Model)
+        {
+            <tr>
+                <td>@day.Personnel.Name</td>
+                <td>@day.Date.ToShortDateString()</td>
+                <td>@day.StartTime</td>
+                <td>@day.EndTime</td>
+                <td>
+                    <form asp-controller="Appointments" asp-action="Create" method="get">
+                        <input type="hidden" name="availableDayId" value="@day.Id" />
+                        <button type="submit" class="btn btn-primary btn-sm">Book</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
