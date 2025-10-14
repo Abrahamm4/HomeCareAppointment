@@ -1,0 +1,50 @@
+﻿@model HomeCareAppointment.Models.Appointment
+
+@{
+    ViewData["Title"] = "Book Appointment";
+}
+
+<h1>Book Appointment</h1>
+<hr />
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <!-- Show chosen AvailableDay info -->
+            <div class="form-group">
+                <label>Selected Slot</label>
+                <input type="text" class="form-control"
+                       value="@ViewBag.AvailableDayInfo" readonly />
+                <input type="hidden" asp-for="AvailableDayId" />
+            </div>
+
+            <!-- Patient (temporary dropdown until login is implemented) -->
+            <div class="form-group">
+                <label asp-for="PatientId" class="control-label"></label>
+                <select asp-for="PatientId" class="form-control" asp-items="ViewBag.PatientId"></select>
+            </div>
+
+            <!-- Notes / Tasks -->
+            <div class="form-group">
+                <label asp-for="Notes" class="control-label">Tasks / Notes</label>
+                <textarea asp-for="Notes" class="form-control"></textarea>
+                <span asp-validation-for="Notes" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mt-3">
+                <input type="submit" value="Confirm Booking" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-controller="AvailableDays" asp-action="Index">Back to Available Days</a>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

@@ -3,6 +3,7 @@ using System;
 using HomeCareAppointment.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HomeCareAppointment.Migrations
 {
     [DbContext(typeof(AvailableDayDbContext))]
-    partial class AvailableDayDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251013121630_InittDb")]
+    partial class InittDb
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -37,7 +40,7 @@ namespace HomeCareAppointment.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("PatientId")
+                    b.Property<int>("PatientId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("PersonnelId")
@@ -51,7 +54,7 @@ namespace HomeCareAppointment.Migrations
 
                     b.HasIndex("PersonnelId");
 
-                    b.ToTable("Appointments");
+                    b.ToTable("Appointment");
                 });
 
             modelBuilder.Entity("HomeCareAppointment.Models.AvailableDay", b =>
@@ -129,7 +132,9 @@ namespace HomeCareAppointment.Migrations
 
                     b.HasOne("HomeCareAppointment.Models.Patient", "Patient")
                         .WithMany("Appointments")
-                        .HasForeignKey("PatientId");
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("HomeCareAppointment.Models.Personnel", "Personnel")
                         .WithMany()

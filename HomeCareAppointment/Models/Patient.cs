@@ -15,6 +15,7 @@ namespace HomeCareAppointment.Models
         [EmailAddress]
         public string? Email { get; set; }
 
-        public virtual List<Appointment>? Appointments { get; set; }
+        // Navigation property: one patient can have many appointments
+        public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
     }
 }
