@@ -1,0 +1,27 @@
+@model IEnumerable<Patient>
+
+<div class="container">
+    <table class='table table-striped'>
+        <tr>
+            <th>Id</th>
+            <th>Name</th>
+            <th>Appointments</th>
+        </tr>
+        @if (Model != null)
+        {
+            @foreach (var patient in Model)
+            {
+                <tr>
+                    <td>@patient.PatientId</td>
+                    <td>@patient.Name</td>
+                    <td>
+                        @if (patient.Appointments != null && patient.Appointments.Any())
+                        {
+                            <p>@string.Join(", ", patient.Appointments.Select(a => $"Appointment{a.AppointmentId}"))</p>
+                        }
+                    </td>
+                </tr>
+            }
+        }
+    </table>
+</div>

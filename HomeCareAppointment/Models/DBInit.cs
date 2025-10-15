@@ -101,11 +101,10 @@ namespace HomeCareAppointment.Models
                 var patient = new Patient
                 {
                     PatientId = 1,
-                    Name= "Test",
+                    Name = "Test",
                     Phone = "92017932",
-                    Email="test@gmail.com"
+                    Email = "test@gmail.com"
                 };
-
             }
         }
     }
