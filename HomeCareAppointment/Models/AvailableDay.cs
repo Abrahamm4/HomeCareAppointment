@@ -4,22 +4,19 @@
     {
         public int Id { get; set; }
 
-        // Foreign key
+        // Foreign key to Personnel
         public int PersonnelId { get; set; }
 
-        // Navigation property
+        // Navigation to Personnel
         public virtual Personnel? Personnel { get; set; }
 
-
-        
         public DateTime Date { get; set; }
         public TimeSpan StartTime { get; set; }
         public TimeSpan EndTime { get; set; }
 
+        // One-to-one: an AvailableDay has zero or one Appointment (slot)
+        public virtual Appointment? Appointment { get; set; }
 
-        public bool IsBooked { get; set; }
-        // Computed property: true if any appointment exists
-       // public bool IsBooked => Appointments.Any();
-        public virtual ICollection<Appointment>? Appointments { get; set; }
+        // Optional collection removed: we model a single appointment per slot
     }
 }

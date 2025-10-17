@@ -21,15 +21,13 @@ namespace HomeCareAppointment.Controllers
         // GET: Appointments
         public async Task<IActionResult> Index()
         {
-            var unbookedDays = await _context.AvailableDays
+            var days = await _context.AvailableDays
                 .Include(d => d.Personnel)
-                .Include(d => d.Appointments)
-                .Where(d => !d.Appointments.Any()) // only free slots
+                .Include(d => d.Appointment)
                 .ToListAsync();
 
-            return View(unbookedDays);
+            return View(days);
         }
-
 
         // GET: Appointments/Details/5
         public async Task<IActionResult> Details(int? id)
@@ -53,53 +51,77 @@ namespace HomeCareAppointment.Controllers
         }
 
         // GET: Appointments/Create
-
         public IActionResult Create(int availableDayId)
         {
             var day = _context.AvailableDays
                 .Include(d => d.Personnel)
+                .Include(d => d.Appointment)
                 .FirstOrDefault(d => d.Id == availableDayId);
 
             if (day == null) return NotFound();
 
-            ViewBag.AvailableDayInfo = $"{day.Personnel.Name} - {day.Date:dd MMM yyyy} {day.StartTime}-{day.EndTime}";
+            if (day.Appointment != null)
+            {
+                // Slot already booked
+                return BadRequest("Selected slot is already booked.");
+            }
+
+            ViewBag.AvailableDayInfo = $"{day.Personnel?.Name} - {day.Date:dd MMM yyyy} {day.StartTime}-{day.EndTime}";
             ViewBag.AvailableDayId = day.Id;
 
             // Temporary patient dropdown until authentication is added
-            //ViewData["PatientId"] = new SelectList(_context.Patients, "Id", "FullName");
+            ViewBag.PatientId = new SelectList(_context.Patients, "PatientId", "Name");
 
-            return View();
+            // Provide an Appointment model instance so the view's tag helpers can work
+            var model = new Appointment
+            {
+                AvailableDayId = day.Id,
+                Date = day.Date
+            };
+
+            return View(model);
         }
-
 
         // POST: Appointments/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
-        
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("PatientId,AvailableDayId,Notes")] Appointment appointment)
         {
-            if (ModelState.IsValid)
+            if (appointment == null) return BadRequest();
+
+            // Get the chosen AvailableDay and its personnel
+            var day = await _context.AvailableDays
+                .Include(d => d.Personnel)
+                .Include(d => d.Appointment)
+                .FirstOrDefaultAsync(d => d.Id == appointment.AvailableDayId);
+
+            if (day == null) return NotFound();
+
+            if (day.Appointment != null)
             {
-                // Get personnel from the chosen AvailableDay
-                var day = await _context.AvailableDays
-                    .Include(d => d.Personnel)
-                    .FirstOrDefaultAsync(d => d.Id == appointment.AvailableDayId);
-
-                if (day == null) return NotFound();
-
-                appointment.PersonnelId = day.PersonnelId;
-              //  appointment.BookedAt = DateTime.Now;
-
-                _context.Add(appointment);
-                await _context.SaveChangesAsync();
-
-                return RedirectToAction(nameof(Index));
+                ModelState.AddModelError(string.Empty, "This slot is already booked.");
+                ViewBag.PatientId = new SelectList(_context.Patients, "PatientId", "Name", appointment.PatientId);
+                ViewBag.AvailableDayInfo = $"{day.Personnel?.Name} - {day.Date:dd MMM yyyy} {day.StartTime}-{day.EndTime}";
+                return View(appointment);
             }
 
-            return View(appointment);
-        }
+            // Set derived values that are not posted from the form
+            appointment.PersonnelId = day.PersonnelId;
+            appointment.Date = day.Date;
 
+            if (!ModelState.IsValid)
+            {
+                ViewBag.PatientId = new SelectList(_context.Patients, "PatientId", "Name", appointment.PatientId);
+                ViewBag.AvailableDayInfo = $"{day.Personnel?.Name} - {day.Date:dd MMM yyyy} {day.StartTime}-{day.EndTime}";
+                return View(appointment);
+            }
+
+            _context.Add(appointment);
+
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Index));
+        }
 
         // GET: Appointments/Edit/5
         public async Task<IActionResult> Edit(int? id)
@@ -121,8 +143,6 @@ namespace HomeCareAppointment.Controllers
         }
 
         // POST: Appointments/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("AppointmentId,Date,Notes,PatientId,PersonnelId,AvailableDayId")] Appointment appointment)
