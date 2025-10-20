@@ -1,4 +1,6 @@
-﻿namespace HomeCareAppointment.Models
+﻿using System.ComponentModel.DataAnnotations;
+using HomeCareAppointment.Attributes;
+namespace HomeCareAppointment.Models
 {
     public class AvailableDay
     {
@@ -11,9 +13,14 @@
         public virtual Personnel? Personnel { get; set; }
 
 
-        
+        [Required(ErrorMessage = "Date required")]
+        [FutureDate] //Custom validation for future dates
         public DateTime Date { get; set; }
+
+        [Required]
         public TimeSpan StartTime { get; set; }
+
+        [Required]
         public TimeSpan EndTime { get; set; }
 
 
