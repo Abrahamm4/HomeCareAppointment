@@ -2,6 +2,7 @@
 using HomeCareAppointment.Attributes;
 namespace HomeCareAppointment.Models
 {
+    [AvailableDayRange] //Validation for entire class, for StartTime<EndTime
     public class AvailableDay
     {
         public int Id { get; set; }
