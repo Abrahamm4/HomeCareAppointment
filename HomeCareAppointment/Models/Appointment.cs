@@ -20,9 +20,9 @@ namespace HomeCareAppointment.Models
         public int PersonnelId { get; set; }
         public int AvailableDayId { get; set; }
 
-        // Navigation properties
-        public virtual Patient Patient { get; set; }
-        public virtual Personnel Personnel { get; set; }
-        public virtual AvailableDay AvailableDay { get; set; }
+        // Navigation properties (nullable to avoid reference-type mismatches)
+        public virtual Patient? Patient { get; set; }
+        public virtual Personnel? Personnel { get; set; }
+        public virtual AvailableDay? AvailableDay { get; set; }
     }
 }

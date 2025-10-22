@@ -13,12 +13,27 @@ namespace HomeCareAppointment.Models
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseLazyLoadingProxies();
+            if (!optionsBuilder.IsConfigured)
+            {
+                optionsBuilder.UseLazyLoadingProxies();
+            }
         }
 
         public AvailableDayDbContext(DbContextOptions<AvailableDayDbContext> options)
             : base(options)
         {
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            // Configure one-to-one: AvailableDay <-> Appointment
+            modelBuilder.Entity<AvailableDay>()
+                .HasOne(d => d.Appointment)
+                .WithOne(a => a.AvailableDay)
+                .HasForeignKey<Appointment>(a => a.AvailableDayId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            base.OnModelCreating(modelBuilder);
         }
     }
 }

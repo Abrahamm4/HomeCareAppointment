@@ -20,15 +20,22 @@
         @foreach (var day in Model)
         {
             <tr>
-                <td>@day.Personnel.Name</td>
+                <td>@day.Personnel?.Name</td>
                 <td>@day.Date.ToShortDateString()</td>
                 <td>@day.StartTime</td>
                 <td>@day.EndTime</td>
                 <td>
-                    <form asp-controller="Appointments" asp-action="Create" method="get">
-                        <input type="hidden" name="availableDayId" value="@day.Id" />
-                        <button type="submit" class="btn btn-primary btn-sm">Book</button>
-                    </form>
+                    @if (day.Appointment == null)
+                    {
+                        <form asp-controller="Appointments" asp-action="Create" method="get">
+                            <input type="hidden" name="availableDayId" value="@day.Id" />
+                            <button type="submit" class="btn btn-primary btn-sm">Book</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">Booked</span>
+                    }
                 </td>
             </tr>
         }
