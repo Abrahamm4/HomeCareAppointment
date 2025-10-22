@@ -27,7 +27,7 @@ namespace HomeCareAppointment.DAL
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Configure one-to-one: AvailableDay <-> Appointment
+            // konfigerer one-to-one: AvailableDay <-> Appointment
             modelBuilder.Entity<AvailableDay>()
                 .HasOne(d => d.Appointment)
                 .WithOne(a => a.AvailableDay)

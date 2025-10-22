@@ -1,10 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using HomeCareAppointment.Models;
 
 namespace HomeCareAppointment.DAL
 {
@@ -15,91 +14,86 @@ namespace HomeCareAppointment.DAL
             using var serviceScope = app.ApplicationServices.CreateScope();
             var context = serviceScope.ServiceProvider.GetRequiredService<AvailableDayDbContext>();
 
-            // Reset database for testing (destructive). Kept intentionally for local testing.
-            context.Database.EnsureDeleted();
-            context.Database.EnsureCreated();
+            // VIKTIG: Bruk migrasjoner, ikke EnsureCreated/EnsureDeleted
+            context.Database.Migrate();
 
-            // Seed Personnel
+            // ----- Personnel -----
             if (!context.Personnels.Any())
             {
-                var personnelList = new List<Personnel>
+                var personnelList = new List<Models.Personnel>
                 {
-                    new Personnel { Name = "Dr. Alice Smith" },
-                    new Personnel { Name = "Nurse Bob Johnson" },
-                    new Personnel { Name = "Therapist Carol Lee" }
+                    new Models.Personnel { Name = "Dr. Alice Smith" },
+                    new Models.Personnel { Name = "Nurse Bob Johnson" },
+                    new Models.Personnel { Name = "Therapist Carol Lee" }
                 };
-
                 context.Personnels.AddRange(personnelList);
                 context.SaveChanges();
             }
 
-            // Seed Patients
+            // ----- Patients -----
             if (!context.Patients.Any())
             {
-                var patients = new List<Patient>
+                var patients = new List<Models.Patient>
                 {
-                    new Patient { Name = "John Doe", Email = "john@example.com", Phone = "12345678" },
-                    new Patient { Name = "Mary Johnson", Email = "mary@example.com", Phone = "87654321" },
-                    new Patient { Name = "Test", Email = "test@gmail.com", Phone = "92017932" }
+                    new Models.Patient { Name = "John Doe",  Email = "john@example.com",  Phone = "12345678" },
+                    new Models.Patient { Name = "Mary Johnson", Email = "mary@example.com", Phone = "87654321" },
+                    new Models.Patient { Name = "Test", Email = "test@gmail.com", Phone = "92017932" }
                 };
-
                 context.Patients.AddRange(patients);
                 context.SaveChanges();
             }
 
-            // Seed AvailableDays
+            // Hent persisterte nøkler
+            var personnelsList = context.Personnels.ToList();
+            if (!personnelsList.Any()) return;
+
+            // ----- AvailableDays -----
             if (!context.AvailableDays.Any())
             {
-                // Ensure there are personnels to reference
-                var personnels = context.Personnels.ToList();
-                if (!personnels.Any()) return; // nothing to seed against
-
-                var availableDays = new List<AvailableDay>
+                var availableDays = new List<Models.AvailableDay>
                 {
-                    new AvailableDay
+                    new Models.AvailableDay
                     {
-                        PersonnelId = personnels.ElementAt(0).Id,
+                        PersonnelId = personnelsList.ElementAt(0).Id,
                         Date = DateTime.Today.AddDays(1),
                         StartTime = new TimeSpan(9, 0, 0),
                         EndTime = new TimeSpan(12, 0, 0)
                     },
-                    new AvailableDay
+                    new Models.AvailableDay
                     {
-                        PersonnelId = personnels.ElementAt(0).Id,
+                        PersonnelId = personnelsList.ElementAt(0).Id,
                         Date = DateTime.Today.AddDays(2),
                         StartTime = new TimeSpan(13, 0, 0),
                         EndTime = new TimeSpan(16, 0, 0)
                     },
-                    new AvailableDay
+                    new Models.AvailableDay
                     {
-                        PersonnelId = personnels.ElementAt(1).Id,
+                        PersonnelId = personnelsList.ElementAt(1).Id,
                         Date = DateTime.Today.AddDays(1),
                         StartTime = new TimeSpan(10, 0, 0),
                         EndTime = new TimeSpan(14, 0, 0)
                     },
-                    new AvailableDay
+                    new Models.AvailableDay
                     {
-                        PersonnelId = personnels.ElementAt(2).Id,
+                        PersonnelId = personnelsList.ElementAt(2).Id,
                         Date = DateTime.Today.AddDays(3),
                         StartTime = new TimeSpan(8, 30, 0),
                         EndTime = new TimeSpan(11, 30, 0)
                     }
                 };
-
                 context.AvailableDays.AddRange(availableDays);
                 context.SaveChanges();
             }
 
-            // Seed ONE Appointment (linking Patient + Personnel + AvailableDay)
+            // ----- Én Appointment (valgfritt) -----
             if (!context.Appointments.Any())
             {
                 var firstAvailableDay = context.AvailableDays.FirstOrDefault();
                 var firstPatient = context.Patients.FirstOrDefault();
                 var firstPersonnel = context.Personnels.FirstOrDefault();
-
                 if (firstAvailableDay != null && firstPatient != null && firstPersonnel != null)
                 {
-                    var appointment = new Appointment
+                    var appointment = new Models.Appointment
                     {
                         PatientId = firstPatient.PatientId,
                         PersonnelId = firstPersonnel.Id,
@@ -107,7 +101,6 @@ namespace HomeCareAppointment.DAL
                         Date = firstAvailableDay.Date,
                         Notes = "Medication reminder"
                     };
-
                     context.Appointments.Add(appointment);
                     context.SaveChanges();
                 }

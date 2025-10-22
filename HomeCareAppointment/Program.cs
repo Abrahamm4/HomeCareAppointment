@@ -1,7 +1,6 @@
-using HomeCareAppointment.Models;
-using HomeCareAppointment.DAL;
+using HomeCareAppointment.DAL;     // <- Repo + DbContext ligger i DAL
+using HomeCareAppointment.Models;  // <- Hvis brukt andre steder; kan fjernes om ubrukt
 using Microsoft.EntityFrameworkCore;
-
 
 namespace HomeCareAppointment
 {
@@ -11,14 +10,22 @@ namespace HomeCareAppointment
         {
             var builder = WebApplication.CreateBuilder(args);
 
-
             // Add services to the container.
             builder.Services.AddControllersWithViews();
 
-            builder.Services.AddDbContext<AvailableDayDbContext>(options => {
-                options.UseSqlite(
-                    builder.Configuration["ConnectionStrings:AvailableDayDbContextConnection"]);
+            // DbContext + Lazy Loading Proxies + SQLite
+            builder.Services.AddDbContext<AvailableDayDbContext>(options =>
+            {
+                options
+                    .UseLazyLoadingProxies() // Viktig: flytt proxies hit, ellers blir de ikke aktivert
+                    .UseSqlite(builder.Configuration["ConnectionStrings:AvailableDayDbContextConnection"]);
             });
+
+            // === Repository-registreringer (Scoped, én instans per HTTP-request) ===
+            builder.Services.AddScoped<IAvailableDayRepository, AvailableDayRepository>();
+            builder.Services.AddScoped<IAppointmentRepository,  AppointmentRepository>();
+            builder.Services.AddScoped<IPatientRepository,      PatientRepository>();
+            builder.Services.AddScoped<IPersonnelRepository,    PersonnelRepository>();
 
             var app = builder.Build();
 
@@ -26,12 +33,14 @@ namespace HomeCareAppointment
             if (!app.Environment.IsDevelopment())
             {
                 app.UseExceptionHandler("/Home/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
-
-                ///DBInit.Seed(app);
             }
-            DBInit.Seed(app);
+
+            // Seeding: KUN i Development (DBInit.Seed sletter/oppretter databasen)
+            if (app.Environment.IsDevelopment())
+            {
+                DBInit.Seed(app);
+            }
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
@@ -48,5 +57,3 @@ namespace HomeCareAppointment
         }
     }
 }
-
-//tharshvan

@@ -1,162 +1,107 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
+using HomeCareAppointment.DAL;
 using HomeCareAppointment.Models;
 
 namespace HomeCareAppointment.Controllers
 {
     public class AvailableDaysController : Controller
     {
-        private readonly AvailableDayDbContext _context;
+        private readonly IAvailableDayRepository _days;
+        private readonly IPersonnelRepository _personnel;
 
-        public AvailableDaysController(AvailableDayDbContext context)
+        public AvailableDaysController(
+            IAvailableDayRepository days,
+            IPersonnelRepository personnel)
         {
-            _context = context;
+            _days = days;
+            _personnel = personnel;
         }
 
         // GET: AvailableDays
         public async Task<IActionResult> Index()
         {
-            var availableDayDbContext = _context.AvailableDays
-                .Include(a => a.Personnel)
-                .Include(a => a.Appointment);
-            return View(await availableDayDbContext.ToListAsync());
+            var list = await _days.GetAllWithRelationsAsync();
+            return View(list);
         }
 
         // GET: AvailableDays/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var availableDay = await _context.AvailableDays
-                .Include(a => a.Personnel)
-                .Include(a => a.Appointment)
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (availableDay == null)
-            {
-                return NotFound();
-            }
-
-            return View(availableDay);
+            if (id is null) return NotFound();
+            var day = await _days.GetByIdWithRelationsAsync(id.Value);
+            if (day is null) return NotFound();
+            return View(day);
         }
 
         // GET: AvailableDays/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
-            ViewData["PersonnelId"] = new SelectList(_context.Personnels, "Id", "Name");
+            var personnels = await _personnel.GetAllAsync();
+            ViewData["PersonnelId"] = new SelectList(personnels, "Id", "Name");
             return View();
         }
 
         // POST: AvailableDays/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,PersonnelId,Date,StartTime,EndTime")] AvailableDay availableDay)
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("Id,PersonnelId,Date,StartTime,EndTime")] AvailableDay model)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                _context.Add(availableDay);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                var personnels = await _personnel.GetAllAsync();
+                ViewData["PersonnelId"] = new SelectList(personnels, "Id", "Name", model.PersonnelId);
+                return View(model);
             }
-            ViewData["PersonnelId"] = new SelectList(_context.Personnels, "Id", "Name", availableDay.PersonnelId);
-            return View(availableDay);
+
+            await _days.CreateAsync(model);
+            return RedirectToAction(nameof(Index));
         }
 
         // GET: AvailableDays/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id is null) return NotFound();
+            var model = await _days.GetByIdAsync(id.Value);
+            if (model is null) return NotFound();
 
-            var availableDay = await _context.AvailableDays.FindAsync(id);
-            if (availableDay == null)
-            {
-                return NotFound();
-            }
-            ViewData["PersonnelId"] = new SelectList(_context.Personnels, "Id", "Name", availableDay.PersonnelId);
-            return View(availableDay);
+            var personnels = await _personnel.GetAllAsync();
+            ViewData["PersonnelId"] = new SelectList(personnels, "Id", "Name", model.PersonnelId);
+            return View(model);
         }
 
         // POST: AvailableDays/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,PersonnelId,Date,StartTime,EndTime")] AvailableDay availableDay)
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, [Bind("Id,PersonnelId,Date,StartTime,EndTime")] AvailableDay model)
         {
-            if (id != availableDay.Id)
+            if (id != model.Id) return NotFound();
+
+            if (!ModelState.IsValid)
             {
-                return NotFound();
+                var personnels = await _personnel.GetAllAsync();
+                ViewData["PersonnelId"] = new SelectList(personnels, "Id", "Name", model.PersonnelId);
+                return View(model);
             }
 
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    _context.Update(availableDay);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!AvailableDayExists(availableDay.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
-            }
-            ViewData["PersonnelId"] = new SelectList(_context.Personnels, "Id", "Name", availableDay.PersonnelId);
-            return View(availableDay);
+            await _days.UpdateAsync(model);
+            return RedirectToAction(nameof(Index));
         }
 
         // GET: AvailableDays/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var availableDay = await _context.AvailableDays
-                .Include(a => a.Personnel)
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (availableDay == null)
-            {
-                return NotFound();
-            }
-
-            return View(availableDay);
+            if (id is null) return NotFound();
+            var day = await _days.GetByIdWithRelationsAsync(id.Value);
+            if (day is null) return NotFound();
+            return View(day);
         }
 
         // POST: AvailableDays/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
+        [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var availableDay = await _context.AvailableDays.FindAsync(id);
-            if (availableDay != null)
-            {
-                _context.AvailableDays.Remove(availableDay);
-            }
-
-            await _context.SaveChangesAsync();
+            await _days.DeleteAsync(id);
             return RedirectToAction(nameof(Index));
-        }
-
-        private bool AvailableDayExists(int id)
-        {
-            return _context.AvailableDays.Any(e => e.Id == id);
         }
     }
 }

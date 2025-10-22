@@ -1,5 +1,9 @@
-using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using HomeCareAppointment.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace HomeCareAppointment.DAL
 {
@@ -8,25 +12,43 @@ namespace HomeCareAppointment.DAL
         private readonly AvailableDayDbContext _db;
         public AvailableDayRepository(AvailableDayDbContext db) => _db = db;
 
-        public async Task<IEnumerable<AvailableDay>> GetAllAsync() =>
-            await _db.AvailableDays.AsNoTracking()
-                .OrderBy(d => d.Date).ThenBy(d => d.StartTime)
-                .ToListAsync();
+        // --- Grunnleggende CRUD ---
+
+        public async Task<IEnumerable<AvailableDay>> GetAllAsync()
+        {
+            var list = await _db.AvailableDays
+                                .AsNoTracking()
+                                .ToListAsync(); // hent først
+            return list.OrderBy(d => d.Date)
+                       .ThenBy(d => d.StartTime); // sorter i minnet (TimeSpan-safe)
+        }
 
         public async Task<AvailableDay?> GetByIdAsync(int id) =>
             await _db.AvailableDays.FindAsync(id);
 
-        public async Task<IEnumerable<AvailableDay>> GetByPersonnelAsync(int personnelId) =>
-            await _db.AvailableDays.AsNoTracking()
-                .Where(d => d.PersonnelId == personnelId)
-                .OrderBy(d => d.Date).ThenBy(d => d.StartTime)
-                .ToListAsync();
+        public async Task<IEnumerable<AvailableDay>> GetByPersonnelAsync(int personnelId)
+        {
+            var list = await _db.AvailableDays
+                                .AsNoTracking()
+                                .Where(d => d.PersonnelId == personnelId)
+                                .ToListAsync();
+            return list.OrderBy(d => d.Date)
+                       .ThenBy(d => d.StartTime); // sorter i minnet
+        }
 
-        public async Task<IEnumerable<AvailableDay>> GetByDateAsync(DateTime date) =>
-            await _db.AvailableDays.AsNoTracking()
-                .Where(d => d.Date.Date == date.Date)
-                .OrderBy(d => d.StartTime)
-                .ToListAsync();
+        public async Task<IEnumerable<AvailableDay>> GetByDateAsync(DateTime date)
+        {
+            // Robust interval-filtrering: [00:00, 24:00)
+            var start = date.Date;
+            var end = start.AddDays(1);
+
+            var list = await _db.AvailableDays
+                                .AsNoTracking()
+                                .Where(d => d.Date >= start && d.Date < end)
+                                .ToListAsync();
+
+            return list.OrderBy(d => d.StartTime); // sorter i minnet
+        }
 
         public async Task CreateAsync(AvailableDay day)
         {
@@ -48,5 +70,24 @@ namespace HomeCareAppointment.DAL
             await _db.SaveChangesAsync();
             return true;
         }
+
+        // --- Med relasjoner ---
+
+        public async Task<IEnumerable<AvailableDay>> GetAllWithRelationsAsync()
+        {
+            var list = await _db.AvailableDays
+                                .Include(d => d.Personnel)
+                                .Include(d => d.Appointment)
+                                .AsNoTracking()
+                                .ToListAsync(); // hent først
+            return list.OrderBy(d => d.Date)
+                       .ThenBy(d => d.StartTime); // sorter i minnet
+        }
+
+        public async Task<AvailableDay?> GetByIdWithRelationsAsync(int id) =>
+            await _db.AvailableDays
+                     .Include(d => d.Personnel)
+                     .Include(d => d.Appointment)
+                     .FirstOrDefaultAsync(d => d.Id == id);
     }
 }
