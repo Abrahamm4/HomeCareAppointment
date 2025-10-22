@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using HomeCareAppointment.Models;
 
-namespace HomeCareAppointment.Models
+namespace HomeCareAppointment.DAL
 {
     public class AvailableDayDbContext : DbContext
     {

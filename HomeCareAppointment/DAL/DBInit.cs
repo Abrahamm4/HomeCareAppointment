@@ -4,8 +4,9 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using HomeCareAppointment.Models;
 
-namespace HomeCareAppointment.Models
+namespace HomeCareAppointment.DAL
 {
     public static class DBInit
     {
