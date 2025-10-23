@@ -58,6 +58,14 @@ namespace HomeCareAppointment.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,PersonnelId,Date,StartTime,EndTime,IsBooked")] AvailableDay availableDay)
         {
+            if (availableDay.Date < DateTime.Now.Date)
+            {
+                ModelState.AddModelError("Date", "Date cannot be a past date");
+            }
+            if (availableDay.EndTime <= availableDay.StartTime)
+            {
+                ModelState.AddModelError("EndTime", "End time cannot be before start time");
+            }
             if (ModelState.IsValid)
             {
                 _context.Add(availableDay);
@@ -96,7 +104,14 @@ namespace HomeCareAppointment.Controllers
             {
                 return NotFound();
             }
-
+            if (availableDay.Date < DateTime.Now.Date)
+            {
+                ModelState.AddModelError("Date", "Date cannot be a past date");
+            }
+            if (availableDay.EndTime <= availableDay.StartTime)
+            {
+                ModelState.AddModelError("EndTime", "End time cannot be before start time");
+            }
             if (ModelState.IsValid)
             {
                 try
