@@ -113,40 +113,91 @@ namespace HomeCareAppointment.Controllers
         public async Task<IActionResult> Edit(int? id)
         {
             if (id is null) return NotFound();
-            var appt = await _appointments.GetByIdAsync(id.Value);
+            var appt = await _appointments.GetByIdWithRelationsAsync(id.Value);
             if (appt is null) return NotFound();
 
-            var days = await _days.GetAllAsync();
-            var pats = await _patients.GetAllAsync();
-            var pers = await _personnels.GetAllAsync();
+            // Prepare list of available days: those without an appointment or the current one
+            var days = (await _days.GetAllWithRelationsAsync())
+                .Where(d => d.Appointment == null || d.Id == appt.AvailableDayId)
+                .ToList();
 
-            ViewData["AvailableDayId"] = new SelectList(days, "Id", "Id", appt.AvailableDayId);
-            ViewData["PatientId"] = new SelectList(pats, "PatientId", "Name", appt.PatientId);
-            ViewData["PersonnelId"] = new SelectList(pers, "Id", "Id", appt.PersonnelId);
+            var selectItems = days.Select(d => new {
+                d.Id,
+                Text = $"{d.Personnel?.Name} - {d.Date:dd MMM yyyy} {d.StartTime:hh\\:mm}-{d.EndTime:hh\\:mm}"
+            }).ToList();
+
+            ViewBag.AvailableDayId = new SelectList(selectItems, "Id", "Text", appt.AvailableDayId);
+
+            // Keep patient info for display (not editable)
+            ViewBag.PatientName = appt.Patient?.Name;
+
+            // Keep original available day id for client-side change notice
+            ViewBag.OriginalAvailableDayId = appt.AvailableDayId;
 
             return View(appt);
         }
 
         // POST: Appointments/Edit/5
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("AppointmentId,Date,Notes,PatientId,PersonnelId,AvailableDayId")] Appointment appointment)
+        public async Task<IActionResult> Edit(int id, [Bind("AppointmentId,Notes,AvailableDayId")] Appointment appointment)
         {
+            if (appointment == null) return BadRequest();
             if (id != appointment.AppointmentId) return NotFound();
 
-            if (!ModelState.IsValid)
+            // Load original appointment
+            var original = await _appointments.GetByIdWithRelationsAsync(id);
+            if (original == null) return NotFound();
+
+            // If AvailableDay changed, move booking to new AvailableDay (create new appointment) and remove old
+            if (appointment.AvailableDayId != original.AvailableDayId)
             {
-                var days = await _days.GetAllAsync();
-                var pats = await _patients.GetAllAsync();
-                var pers = await _personnels.GetAllAsync();
+                var newDay = await _days.GetByIdWithRelationsAsync(appointment.AvailableDayId);
+                if (newDay == null) return NotFound();
 
-                ViewData["AvailableDayId"] = new SelectList(days, "Id", "Id", appointment.AvailableDayId);
-                ViewData["PatientId"] = new SelectList(pats, "PatientId", "Name", appointment.PatientId);
-                ViewData["PersonnelId"] = new SelectList(pers, "Id", "Id", appointment.PersonnelId);
+                if (newDay.Appointment != null)
+                {
+                    // Slot taken
+                    ModelState.AddModelError(string.Empty, "Selected slot is already booked.");
 
-                return View(appointment);
+                    // Rebuild select list and return
+                    var days = (await _days.GetAllWithRelationsAsync())
+                        .Where(d => d.Appointment == null || d.Id == original.AvailableDayId)
+                        .ToList();
+
+                    var selectItems = days.Select(d => new {
+                        d.Id,
+                        Text = $"{d.Personnel?.Name} - {d.Date:dd MMM yyyy} {d.StartTime:hh\\:mm}-{d.EndTime:hh\\:mm}"
+                    }).ToList();
+
+                    ViewBag.AvailableDayId = new SelectList(selectItems, "Id", "Text", appointment.AvailableDayId);
+                    ViewBag.PatientName = original.Patient?.Name;
+                    ViewBag.OriginalAvailableDayId = original.AvailableDayId;
+                    return View(original);
+                }
+
+                // Create new appointment for the selected day using patient from original
+                var newAppointment = new Appointment
+                {
+                    PatientId = original.PatientId,
+                    PersonnelId = newDay.PersonnelId,
+                    AvailableDayId = newDay.Id,
+                    Date = newDay.Date,
+                    Notes = appointment.Notes
+                };
+
+                await _appointments.CreateAsync(newAppointment);
+
+                // Remove original appointment
+                await _appointments.DeleteAsync(original.AppointmentId);
+
+                return RedirectToAction(nameof(Index));
             }
 
-            await _appointments.UpdateAsync(appointment);
+            // Same AvailableDay: just update notes
+            original.Notes = appointment.Notes;
+
+            await _appointments.UpdateAsync(original);
+
             return RedirectToAction(nameof(Index));
         }
 
