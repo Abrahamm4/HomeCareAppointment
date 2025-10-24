@@ -7,23 +7,24 @@ namespace HomeCareAppointment.Models
     {
         public int Id { get; set; }
 
-        // Foreign key
+        // Foreign key to Personnel
         public int PersonnelId { get; set; }
 
-        // Navigation property
+        // Navigation to Personnel
         public virtual Personnel? Personnel { get; set; }
 
-
-        [Required(ErrorMessage = "Date required")]
-        [FutureDate] //Custom validation for future dates
+        [DataType(DataType.Date)]
         public DateTime Date { get; set; }
 
-        [Required]
+        [DataType(DataType.Time)]
+        [DisplayFormat(DataFormatString = "{0:hh\\:mm\\:ss}")]
         public TimeSpan StartTime { get; set; }
-
-        [Required]
+        
+        [DataType(DataType.Time)]
+        [DisplayFormat(DataFormatString ="{0:hh\\:mm\\:ss}")]
         public TimeSpan EndTime { get; set; }
 
+        // One-to-one: an AvailableDay has zero or one Appointment (slot)
 
         public bool IsBooked { get; set; }
         // Computed property: true if any appointment exists

@@ -66,6 +66,23 @@ namespace HomeCareAppointment.Controllers
             {
                 ModelState.AddModelError("EndTime", "End time cannot be before start time");
             }
+            var sameDays = await _context.AvailableDays
+            .Where(ad => ad.PersonnelId == availableDay.PersonnelId && ad.Date.Date == availableDay.Date.Date)
+            .ToListAsync();
+
+            bool overlap = sameDays.Any(ad =>
+            {
+                if (ad.Id == availableDay.Id) { return false; }
+                var parsedStart = TimeSpan.Parse(ad.StartTime.ToString());
+                var parsedEnd = TimeSpan.Parse(ad.EndTime.ToString());
+
+                return availableDay.StartTime < parsedEnd && availableDay.EndTime > parsedStart;
+            }
+            );
+            if (overlap)
+            {
+                ModelState.AddModelError("", "Time slot overlaps with existing time slot for same personnel");
+            }
             if (ModelState.IsValid)
             {
                 _context.Add(availableDay);
