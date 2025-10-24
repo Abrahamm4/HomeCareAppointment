@@ -10,6 +10,12 @@ namespace HomeCareAppointment.Controllers
         {
             return View();
         }
+        
+        // GET: PatientController/Table
+        public ActionResult Table()
+        {
+            return View();
+        }
 
         // GET: PatientController/Details/5
         public ActionResult Details(int id)

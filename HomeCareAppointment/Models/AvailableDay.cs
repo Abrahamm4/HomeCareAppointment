@@ -25,10 +25,8 @@ namespace HomeCareAppointment.Models
         public TimeSpan EndTime { get; set; }
 
         // One-to-one: an AvailableDay has zero or one Appointment (slot)
+        public virtual Appointment? Appointment { get; set; }
 
-        public bool IsBooked { get; set; }
-        // Computed property: true if any appointment exists
-       // public bool IsBooked => Appointments.Any();
-        public virtual ICollection<Appointment>? Appointments { get; set; }
+        // Optional collection removed: we model a single appointment per slot
     }
 }

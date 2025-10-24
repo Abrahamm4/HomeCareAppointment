@@ -21,7 +21,9 @@ namespace HomeCareAppointment.Controllers
         // GET: AvailableDays
         public async Task<IActionResult> Index()
         {
-            var availableDayDbContext = _context.AvailableDays.Include(a => a.Personnel);
+            var availableDayDbContext = _context.AvailableDays
+                .Include(a => a.Personnel)
+                .Include(a => a.Appointment);
             return View(await availableDayDbContext.ToListAsync());
         }
 
@@ -35,6 +37,7 @@ namespace HomeCareAppointment.Controllers
 
             var availableDay = await _context.AvailableDays
                 .Include(a => a.Personnel)
+                .Include(a => a.Appointment)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (availableDay == null)
             {
@@ -52,11 +55,9 @@ namespace HomeCareAppointment.Controllers
         }
 
         // POST: AvailableDays/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,PersonnelId,Date,StartTime,EndTime,IsBooked")] AvailableDay availableDay)
+        public async Task<IActionResult> Create([Bind("Id,PersonnelId,Date,StartTime,EndTime")] AvailableDay availableDay)
         {
             if (availableDay.Date < DateTime.Now.Date)
             {
@@ -111,11 +112,9 @@ namespace HomeCareAppointment.Controllers
         }
 
         // POST: AvailableDays/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,PersonnelId,Date,StartTime,EndTime,IsBooked")] AvailableDay availableDay)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,PersonnelId,Date,StartTime,EndTime")] AvailableDay availableDay)
         {
             if (id != availableDay.Id)
             {
