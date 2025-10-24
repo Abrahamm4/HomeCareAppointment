@@ -103,5 +103,11 @@ namespace HomeCareAppointment.Controllers
             await _days.DeleteAsync(id);
             return RedirectToAction(nameof(Index));
         }
+
+        private async Task<bool> AvailableDayExists(int id)
+        {
+            var d = await _days.GetByIdAsync(id);
+            return d != null;
+        }
     }
 }

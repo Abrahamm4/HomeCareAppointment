@@ -1,4 +1,5 @@
 ﻿using System.Threading.Tasks;
+using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using HomeCareAppointment.DAL;
@@ -30,6 +31,11 @@ namespace HomeCareAppointment.Controllers
         public async Task<IActionResult> Index()
         {
             var days = await _days.GetAllWithRelationsAsync();
+
+            // Load all patients for dropdown (temporary until login)
+            var patients = await _patients.GetAllAsync();
+            ViewBag.Patients = patients;
+
             return View(days);
         }
 
@@ -115,8 +121,8 @@ namespace HomeCareAppointment.Controllers
             var pers = await _personnels.GetAllAsync();
 
             ViewData["AvailableDayId"] = new SelectList(days, "Id", "Id", appt.AvailableDayId);
-            ViewData["PatientId"]      = new SelectList(pats, "PatientId", "Name", appt.PatientId);
-            ViewData["PersonnelId"]    = new SelectList(pers, "Id", "Id", appt.PersonnelId);
+            ViewData["PatientId"] = new SelectList(pats, "PatientId", "Name", appt.PatientId);
+            ViewData["PersonnelId"] = new SelectList(pers, "Id", "Id", appt.PersonnelId);
 
             return View(appt);
         }
@@ -134,8 +140,8 @@ namespace HomeCareAppointment.Controllers
                 var pers = await _personnels.GetAllAsync();
 
                 ViewData["AvailableDayId"] = new SelectList(days, "Id", "Id", appointment.AvailableDayId);
-                ViewData["PatientId"]      = new SelectList(pats, "PatientId", "Name", appointment.PatientId);
-                ViewData["PersonnelId"]    = new SelectList(pers, "Id", "Id", appointment.PersonnelId);
+                ViewData["PatientId"] = new SelectList(pats, "PatientId", "Name", appointment.PatientId);
+                ViewData["PersonnelId"] = new SelectList(pers, "Id", "Id", appointment.PersonnelId);
 
                 return View(appointment);
             }
@@ -159,6 +165,62 @@ namespace HomeCareAppointment.Controllers
         {
             await _appointments.DeleteAsync(id);
             return RedirectToAction(nameof(Index));
+        }
+
+        // GET: Appointments/ManageAdmin
+        public async Task<IActionResult> ManageAdmin()
+        {
+            var appointments = await _appointments.GetAllWithRelationsAsync();
+            var ordered = appointments.OrderBy(a => a.AvailableDay?.Date).ToList();
+
+            return View("Manage", ordered);
+        }
+
+        // POST: Appointments/ManagePatient
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ManagePatient(int patientId)
+        {
+            var patient = await _patients.GetByIdAsync(patientId);
+
+            var appointments = (await _appointments.GetAllWithRelationsAsync())
+                .Where(a => a.PatientId == patientId)
+                .OrderBy(a => a.AvailableDay?.Date)
+                .ToList();
+
+            ViewData["PatientMode"] = true;
+            ViewData["SelectedPatient"] = patient;
+
+            return View("Manage", appointments);
+        }
+
+        // GET: Appointments/ManagePatient
+        [HttpGet]
+        public async Task<IActionResult> ManagePatient(int? patientId)
+        {
+            if (patientId == null)
+            {
+                return BadRequest();
+            }
+
+            var patient = await _patients.GetByIdAsync(patientId.Value);
+
+            var appointments = (await _appointments.GetAllWithRelationsAsync())
+                .Where(a => a.PatientId == patientId.Value)
+                .OrderBy(a => a.AvailableDay?.Date)
+                .ToList();
+
+            ViewData["PatientMode"] = true;
+            ViewData["SelectedPatient"] = patient;
+
+            return View("Manage", appointments);
+        }
+
+
+        private async Task<bool> AppointmentExists(int id)
+        {
+            var a = await _appointments.GetByIdAsync(id);
+            return a != null;
         }
     }
 }
