@@ -136,51 +136,130 @@ namespace HomeCareAppointment.Controllers
                 return NotFound();
             }
 
-            var appointment = await _context.Appointments.FindAsync(id);
+            var appointment = await _context.Appointments
+                .Include(a => a.AvailableDay)
+                .Include(a => a.Patient)
+                .FirstOrDefaultAsync(a => a.AppointmentId == id);
+
             if (appointment == null)
             {
                 return NotFound();
             }
-            ViewData["AvailableDayId"] = new SelectList(_context.AvailableDays, "Id", "Id", appointment.AvailableDayId);
-            ViewData["PatientId"] = new SelectList(_context.Set<Patient>(), "PatientId", "Name", appointment.PatientId);
-            ViewData["PersonnelId"] = new SelectList(_context.Personnels, "Id", "Id", appointment.PersonnelId);
+
+            // Prepare list of available days: those without an appointment or the current one
+            var days = await _context.AvailableDays
+                .Include(d => d.Personnel)
+                .Include(d => d.Appointment)
+                .Where(d => d.Appointment == null || d.Id == appointment.AvailableDayId)
+                .ToListAsync();
+
+            var selectItems = days.Select(d => new {
+                d.Id,
+                Text = $"{d.Personnel?.Name} - {d.Date:dd MMM yyyy} {d.StartTime:hh\\:mm}-{d.EndTime:hh\\:mm}"
+            }).ToList();
+
+            ViewBag.AvailableDayId = new SelectList(selectItems, "Id", "Text", appointment.AvailableDayId);
+
+            // Keep patient info for display (not editable)
+            ViewBag.PatientName = appointment.Patient?.Name;
+
+            // Keep original available day id for client-side change notice
+            ViewBag.OriginalAvailableDayId = appointment.AvailableDayId;
+
             return View(appointment);
         }
 
         // POST: Appointments/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("AppointmentId,Date,Notes,PatientId,PersonnelId,AvailableDayId")] Appointment appointment)
+        public async Task<IActionResult> Edit(int id, [Bind("AppointmentId,Notes,AvailableDayId")] Appointment appointment)
         {
-            if (id != appointment.AppointmentId)
-            {
-                return NotFound();
-            }
+            if (appointment == null) return BadRequest();
+            if (id != appointment.AppointmentId) return NotFound();
 
-            if (ModelState.IsValid)
+            // Load original appointment
+            var original = await _context.Appointments
+                .Include(a => a.AvailableDay)
+                .Include(a => a.Patient)
+                .FirstOrDefaultAsync(a => a.AppointmentId == id);
+
+            if (original == null) return NotFound();
+
+            // If AvailableDay changed, move booking to new AvailableDay (create new appointment) and remove old
+            if (appointment.AvailableDayId != original.AvailableDayId)
             {
-                try
+                var newDay = await _context.AvailableDays
+                    .Include(d => d.Personnel)
+                    .Include(d => d.Appointment)
+                    .FirstOrDefaultAsync(d => d.Id == appointment.AvailableDayId);
+
+                if (newDay == null) return NotFound();
+
+                if (newDay.Appointment != null)
                 {
-                    _context.Update(appointment);
-                    await _context.SaveChangesAsync();
+                    // Slot taken
+                    ModelState.AddModelError(string.Empty, "Selected slot is already booked.");
+
+                    // Rebuild select list and return
+                    var days = await _context.AvailableDays
+                        .Include(d => d.Personnel)
+                        .Include(d => d.Appointment)
+                        .Where(d => d.Appointment == null || d.Id == original.AvailableDayId)
+                        .ToListAsync();
+
+                    var selectItems = days.Select(d => new {
+                        d.Id,
+                        Text = $"{d.Personnel?.Name} - {d.Date:dd MMM yyyy} {d.StartTime:hh\\:mm}-{d.EndTime:hh\\:mm}"
+                    }).ToList();
+
+                    ViewBag.AvailableDayId = new SelectList(selectItems, "Id", "Text", appointment.AvailableDayId);
+                    ViewBag.PatientName = original.Patient?.Name;
+                    // ensure original id is available to view
+                    ViewBag.OriginalAvailableDayId = original.AvailableDayId;
+                    return View(original);
                 }
-                catch (DbUpdateConcurrencyException)
+
+                // Create new appointment for the selected day using patient from original
+                var newAppointment = new Appointment
                 {
-                    if (!AppointmentExists(appointment.AppointmentId))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
+                    PatientId = original.PatientId,
+                    PersonnelId = newDay.PersonnelId,
+                    AvailableDayId = newDay.Id,
+                    Date = newDay.Date,
+                    Notes = appointment.Notes
+                };
+
+                _context.Appointments.Add(newAppointment);
+
+                // Remove original appointment
+                _context.Appointments.Remove(original);
+
+                await _context.SaveChangesAsync();
+
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["AvailableDayId"] = new SelectList(_context.AvailableDays, "Id", "Id", appointment.AvailableDayId);
-            ViewData["PatientId"] = new SelectList(_context.Set<Patient>(), "PatientId", "Name", appointment.PatientId);
-            ViewData["PersonnelId"] = new SelectList(_context.Personnels, "Id", "Id", appointment.PersonnelId);
-            return View(appointment);
+
+            // Same AvailableDay: just update notes
+            original.Notes = appointment.Notes;
+
+            try
+            {
+                _context.Update(original);
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!AppointmentExists(original.AppointmentId))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return RedirectToAction(nameof(Index));
         }
 
         // GET: Appointments/Delete/5
@@ -230,7 +309,7 @@ namespace HomeCareAppointment.Controllers
                 .OrderBy(a => a.AvailableDay.Date)
                 .ToListAsync();
 
-           // ViewData["PatientMode"] = false;
+            // ViewData["PatientMode"] = false;
             return View("Manage", appointments);
         }
 

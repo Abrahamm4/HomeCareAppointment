@@ -10,7 +10,7 @@
 
     <!-- Admin manage (later restrict to Admin role) -->
     <a asp-controller="Appointments" asp-action="ManageAdmin"
-       class="btn btn-outline-primary w-50">
+       class="btn btn-primary btn-app w-50">
         Manage Bookings (Admin)
     </a>
 
@@ -24,7 +24,7 @@
                     <option value="@patient.PatientId">@patient.Name</option>
                 }
             </select>
-            <button type="submit" class="btn btn-outline-secondary">
+            <button type="submit" class="btn btn-primary btn-app">
                 Manage Bookings (Patient)
             </button>
         </div>
@@ -56,7 +56,7 @@
                     {
                         <form asp-controller="Appointments" asp-action="Create" method="get">
                             <input type="hidden" name="availableDayId" value="@day.Id" />
-                            <button type="submit" class="btn btn-primary btn-sm">Book</button>
+                            <button type="submit" class="btn btn-primary btn-app btn-app-sm">Book</button>
                         </form>
                     }
                     else
