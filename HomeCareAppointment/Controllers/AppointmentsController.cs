@@ -26,6 +26,11 @@ namespace HomeCareAppointment.Controllers
                 .Include(d => d.Appointment)
                 .ToListAsync();
 
+            // Load all patients for dropdown (temporary until login)
+            ViewBag.Patients = await _context.Patients
+                .ToListAsync();
+
+
             return View(days);
         }
 
@@ -213,6 +218,69 @@ namespace HomeCareAppointment.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
+
+
+        // GET: Appointments/ManageAdmin
+        public async Task<IActionResult> ManageAdmin()
+        {
+            var appointments = await _context.Appointments
+                .Include(a => a.AvailableDay)
+                .Include(a => a.Personnel)
+                .Include(a => a.Patient)
+                .OrderBy(a => a.AvailableDay.Date)
+                .ToListAsync();
+
+           // ViewData["PatientMode"] = false;
+            return View("Manage", appointments);
+        }
+
+        // POST: Appointments/ManagePatient
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ManagePatient(int patientId)
+        {
+            var patient = await _context.Patients.FindAsync(patientId);
+
+            var appointments = await _context.Appointments
+                .Where(a => a.PatientId == patientId)
+                .Include(a => a.AvailableDay)
+                .Include(a => a.Personnel)
+                .Include(a => a.Patient)
+                .OrderBy(a => a.AvailableDay.Date)
+                .ToListAsync();
+
+            ViewData["PatientMode"] = true;
+            ViewData["SelectedPatient"] = patient;
+
+            return View("Manage", appointments);
+        }
+
+        // GET: Appointments/ManagePatient
+        [HttpGet]
+        public async Task<IActionResult> ManagePatient(int? patientId)
+        {
+            if (patientId == null)
+            {
+                return BadRequest();
+            }
+
+            var patient = await _context.Patients.FindAsync(patientId.Value);
+
+            var appointments = await _context.Appointments
+                .Where(a => a.PatientId == patientId.Value)
+                .Include(a => a.AvailableDay)
+                .Include(a => a.Personnel)
+                .Include(a => a.Patient)
+                .OrderBy(a => a.AvailableDay.Date)
+                .ToListAsync();
+
+            ViewData["PatientMode"] = true;
+            ViewData["SelectedPatient"] = patient;
+
+            return View("Manage", appointments);
+        }
+
+
 
         private bool AppointmentExists(int id)
         {

@@ -154,6 +154,7 @@ namespace HomeCareAppointment.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+
         private bool AvailableDayExists(int id)
         {
             return _context.AvailableDays.Any(e => e.Id == id);
