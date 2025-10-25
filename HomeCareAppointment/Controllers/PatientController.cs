@@ -1,89 +1,73 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using HomeCareAppointment.DAL;
+using HomeCareAppointment.Models;
+using System.Threading.Tasks;
 
 namespace HomeCareAppointment.Controllers
 {
+    [Route("[controller]")] // => /Patient/...
     public class PatientController : Controller
     {
-        // GET: PatientController
-        public ActionResult Index()
+        private readonly IPatientRepository _repo;
+        public PatientController(IPatientRepository repo) => _repo = repo;
+
+        // Svarer på både /Patient og /Patient/Table
+        [HttpGet("")]          // GET /Patient
+        [HttpGet("Table")]     // GET /Patient/Table
+        public async Task<IActionResult> Index()
         {
-            return View();
-        }
-        
-        // GET: PatientController/Table
-        public ActionResult Table()
-        {
-            return View();
+            var patients = await _repo.GetAllAsync();
+            return View(patients); // bruker Views/Patient/Index.cshtml
         }
 
-        // GET: PatientController/Details/5
-        public ActionResult Details(int id)
+        [HttpGet("Details/{id:int}")]
+        public async Task<IActionResult> Details(int id)
         {
-            return View();
+            var patient = await _repo.GetByIdAsync(id);
+            if (patient == null) return NotFound();
+            return View(patient);
         }
 
-        // GET: PatientController/Create
-        public ActionResult Create()
+        [HttpGet("Create")]
+        public IActionResult Create() => View(new Patient());
+
+        [HttpPost("Create"), ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Patient model)
         {
-            return View();
+            if (!ModelState.IsValid) return View(model);
+            await _repo.CreateAsync(model);
+            return RedirectToAction(nameof(Index));
         }
 
-        // POST: PatientController/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Create(IFormCollection collection)
+        [HttpGet("Edit/{id:int}")]
+        public async Task<IActionResult> Edit(int id)
         {
-            try
-            {
-                return RedirectToAction(nameof(Index));
-            }
-            catch
-            {
-                return View();
-            }
+            var patient = await _repo.GetByIdAsync(id);
+            if (patient == null) return NotFound();
+            return View(patient);
         }
 
-        // GET: PatientController/Edit/5
-        public ActionResult Edit(int id)
+        [HttpPost("Edit"), ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(Patient model)
         {
-            return View();
+            if (!ModelState.IsValid) return View(model);
+            await _repo.UpdateAsync(model);
+            return RedirectToAction(nameof(Index));
         }
 
-        // POST: PatientController/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Edit(int id, IFormCollection collection)
+        [HttpGet("Delete/{id:int}")]
+        public async Task<IActionResult> Delete(int id)
         {
-            try
-            {
-                return RedirectToAction(nameof(Index));
-            }
-            catch
-            {
-                return View();
-            }
+            var patient = await _repo.GetByIdAsync(id);
+            if (patient == null) return NotFound();
+            return View(patient);
         }
 
-        // GET: PatientController/Delete/5
-        public ActionResult Delete(int id)
+        [HttpPost("Delete"), ActionName("Delete"), ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            return View();
-        }
-
-        // POST: PatientController/Delete/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Delete(int id, IFormCollection collection)
-        {
-            try
-            {
-                return RedirectToAction(nameof(Index));
-            }
-            catch
-            {
-                return View();
-            }
+            await _repo.DeleteAsync(id);
+            return RedirectToAction(nameof(Index));
         }
     }
 }
