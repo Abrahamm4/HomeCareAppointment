@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using HomeCareAppointment.DAL;
 using HomeCareAppointment.Models;
+using System.Collections.Generic;
 
 namespace HomeCareAppointment.Controllers
 {
@@ -27,7 +28,6 @@ namespace HomeCareAppointment.Controllers
         }
 
         // GET: Appointments
-        // (Beholder din nåværende visning som viser AvailableDays med status)
         public async Task<IActionResult> Index()
         {
             var days = await _days.GetAllWithRelationsAsync();
@@ -66,7 +66,6 @@ namespace HomeCareAppointment.Controllers
             var allPatients = await _patients.GetAllAsync();
             ViewBag.PatientId = new SelectList(allPatients, "PatientId", "Name");
 
-            // Gi viewet en modell-instans slik at tag helpers fungerer
             var model = new Appointment
             {
                 AvailableDayId = day.Id,
@@ -93,7 +92,7 @@ namespace HomeCareAppointment.Controllers
                 return View(appointment);
             }
 
-            // Avledede felt
+            // Derived fields
             appointment.PersonnelId = day.PersonnelId;
             appointment.Date = day.Date;
 
@@ -266,7 +265,6 @@ namespace HomeCareAppointment.Controllers
 
             return View("Manage", appointments);
         }
-
 
         private async Task<bool> AppointmentExists(int id)
         {
