@@ -7,7 +7,7 @@
 <h1>Index</h1>
 
 <p>
-    <a asp-action="Create">Create New</a>
+    <a asp-action="Create" class="btn btn-primary btn-app">Create New</a>
 </p>
 <table class="table">
     <thead>
@@ -49,9 +49,9 @@
                 @(item.Appointment != null ? "Yes" : "No")
             </td>
             <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
+                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning btn-app-sm">Edit</a>
+                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary btn-app-sm ms-1">Details</a>
+                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger btn-app-sm ms-1">Delete</a>
             </td>
         </tr>
 }

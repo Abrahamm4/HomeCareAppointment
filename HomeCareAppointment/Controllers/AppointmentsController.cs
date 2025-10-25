@@ -1,8 +1,10 @@
 ﻿using System.Threading.Tasks;
+using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using HomeCareAppointment.DAL;
 using HomeCareAppointment.Models;
+using System.Collections.Generic;
 
 namespace HomeCareAppointment.Controllers
 {
@@ -26,10 +28,14 @@ namespace HomeCareAppointment.Controllers
         }
 
         // GET: Appointments
-        // (Beholder din nåværende visning som viser AvailableDays med status)
         public async Task<IActionResult> Index()
         {
             var days = await _days.GetAllWithRelationsAsync();
+
+            // Load all patients for dropdown (temporary until login)
+            var patients = await _patients.GetAllAsync();
+            ViewBag.Patients = patients;
+
             return View(days);
         }
 
@@ -60,7 +66,6 @@ namespace HomeCareAppointment.Controllers
             var allPatients = await _patients.GetAllAsync();
             ViewBag.PatientId = new SelectList(allPatients, "PatientId", "Name");
 
-            // Gi viewet en modell-instans slik at tag helpers fungerer
             var model = new Appointment
             {
                 AvailableDayId = day.Id,
@@ -87,7 +92,7 @@ namespace HomeCareAppointment.Controllers
                 return View(appointment);
             }
 
-            // Avledede felt
+            // Derived fields
             appointment.PersonnelId = day.PersonnelId;
             appointment.Date = day.Date;
 
@@ -107,40 +112,91 @@ namespace HomeCareAppointment.Controllers
         public async Task<IActionResult> Edit(int? id)
         {
             if (id is null) return NotFound();
-            var appt = await _appointments.GetByIdAsync(id.Value);
+            var appt = await _appointments.GetByIdWithRelationsAsync(id.Value);
             if (appt is null) return NotFound();
 
-            var days = await _days.GetAllAsync();
-            var pats = await _patients.GetAllAsync();
-            var pers = await _personnels.GetAllAsync();
+            // Prepare list of available days: those without an appointment or the current one
+            var days = (await _days.GetAllWithRelationsAsync())
+                .Where(d => d.Appointment == null || d.Id == appt.AvailableDayId)
+                .ToList();
 
-            ViewData["AvailableDayId"] = new SelectList(days, "Id", "Id", appt.AvailableDayId);
-            ViewData["PatientId"]      = new SelectList(pats, "PatientId", "Name", appt.PatientId);
-            ViewData["PersonnelId"]    = new SelectList(pers, "Id", "Id", appt.PersonnelId);
+            var selectItems = days.Select(d => new {
+                d.Id,
+                Text = $"{d.Personnel?.Name} - {d.Date:dd MMM yyyy} {d.StartTime:hh\\:mm}-{d.EndTime:hh\\:mm}"
+            }).ToList();
+
+            ViewBag.AvailableDayId = new SelectList(selectItems, "Id", "Text", appt.AvailableDayId);
+
+            // Keep patient info for display (not editable)
+            ViewBag.PatientName = appt.Patient?.Name;
+
+            // Keep original available day id for client-side change notice
+            ViewBag.OriginalAvailableDayId = appt.AvailableDayId;
 
             return View(appt);
         }
 
         // POST: Appointments/Edit/5
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("AppointmentId,Date,Notes,PatientId,PersonnelId,AvailableDayId")] Appointment appointment)
+        public async Task<IActionResult> Edit(int id, [Bind("AppointmentId,Notes,AvailableDayId")] Appointment appointment)
         {
+            if (appointment == null) return BadRequest();
             if (id != appointment.AppointmentId) return NotFound();
 
-            if (!ModelState.IsValid)
+            // Load original appointment
+            var original = await _appointments.GetByIdWithRelationsAsync(id);
+            if (original == null) return NotFound();
+
+            // If AvailableDay changed, move booking to new AvailableDay (create new appointment) and remove old
+            if (appointment.AvailableDayId != original.AvailableDayId)
             {
-                var days = await _days.GetAllAsync();
-                var pats = await _patients.GetAllAsync();
-                var pers = await _personnels.GetAllAsync();
+                var newDay = await _days.GetByIdWithRelationsAsync(appointment.AvailableDayId);
+                if (newDay == null) return NotFound();
 
-                ViewData["AvailableDayId"] = new SelectList(days, "Id", "Id", appointment.AvailableDayId);
-                ViewData["PatientId"]      = new SelectList(pats, "PatientId", "Name", appointment.PatientId);
-                ViewData["PersonnelId"]    = new SelectList(pers, "Id", "Id", appointment.PersonnelId);
+                if (newDay.Appointment != null)
+                {
+                    // Slot taken
+                    ModelState.AddModelError(string.Empty, "Selected slot is already booked.");
 
-                return View(appointment);
+                    // Rebuild select list and return
+                    var days = (await _days.GetAllWithRelationsAsync())
+                        .Where(d => d.Appointment == null || d.Id == original.AvailableDayId)
+                        .ToList();
+
+                    var selectItems = days.Select(d => new {
+                        d.Id,
+                        Text = $"{d.Personnel?.Name} - {d.Date:dd MMM yyyy} {d.StartTime:hh\\:mm}-{d.EndTime:hh\\:mm}"
+                    }).ToList();
+
+                    ViewBag.AvailableDayId = new SelectList(selectItems, "Id", "Text", appointment.AvailableDayId);
+                    ViewBag.PatientName = original.Patient?.Name;
+                    ViewBag.OriginalAvailableDayId = original.AvailableDayId;
+                    return View(original);
+                }
+
+                // Create new appointment for the selected day using patient from original
+                var newAppointment = new Appointment
+                {
+                    PatientId = original.PatientId,
+                    PersonnelId = newDay.PersonnelId,
+                    AvailableDayId = newDay.Id,
+                    Date = newDay.Date,
+                    Notes = appointment.Notes
+                };
+
+                await _appointments.CreateAsync(newAppointment);
+
+                // Remove original appointment
+                await _appointments.DeleteAsync(original.AppointmentId);
+
+                return RedirectToAction(nameof(Index));
             }
 
-            await _appointments.UpdateAsync(appointment);
+            // Same AvailableDay: just update notes
+            original.Notes = appointment.Notes;
+
+            await _appointments.UpdateAsync(original);
+
             return RedirectToAction(nameof(Index));
         }
 
@@ -159,6 +215,61 @@ namespace HomeCareAppointment.Controllers
         {
             await _appointments.DeleteAsync(id);
             return RedirectToAction(nameof(Index));
+        }
+
+        // GET: Appointments/ManageAdmin
+        public async Task<IActionResult> ManageAdmin()
+        {
+            var appointments = await _appointments.GetAllWithRelationsAsync();
+            var ordered = appointments.OrderBy(a => a.AvailableDay?.Date).ToList();
+
+            return View("Manage", ordered);
+        }
+
+        // POST: Appointments/ManagePatient
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ManagePatient(int patientId)
+        {
+            var patient = await _patients.GetByIdAsync(patientId);
+
+            var appointments = (await _appointments.GetAllWithRelationsAsync())
+                .Where(a => a.PatientId == patientId)
+                .OrderBy(a => a.AvailableDay?.Date)
+                .ToList();
+
+            ViewData["PatientMode"] = true;
+            ViewData["SelectedPatient"] = patient;
+
+            return View("Manage", appointments);
+        }
+
+        // GET: Appointments/ManagePatient
+        [HttpGet]
+        public async Task<IActionResult> ManagePatient(int? patientId)
+        {
+            if (patientId == null)
+            {
+                return BadRequest();
+            }
+
+            var patient = await _patients.GetByIdAsync(patientId.Value);
+
+            var appointments = (await _appointments.GetAllWithRelationsAsync())
+                .Where(a => a.PatientId == patientId.Value)
+                .OrderBy(a => a.AvailableDay?.Date)
+                .ToList();
+
+            ViewData["PatientMode"] = true;
+            ViewData["SelectedPatient"] = patient;
+
+            return View("Manage", appointments);
+        }
+
+        private async Task<bool> AppointmentExists(int id)
+        {
+            var a = await _appointments.GetByIdAsync(id);
+            return a != null;
         }
     }
 }

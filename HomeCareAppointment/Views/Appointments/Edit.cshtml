@@ -13,31 +13,29 @@
         <form asp-action="Edit">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <input type="hidden" asp-for="AppointmentId" />
+
             <div class="form-group">
-                <label asp-for="Date" class="control-label"></label>
-                <input asp-for="Date" class="form-control" />
-                <span asp-validation-for="Date" class="text-danger"></span>
+                <label class="control-label">Patient</label>
+                <input class="form-control" value="@ViewBag.PatientName" readonly />
             </div>
+
             <div class="form-group">
                 <label asp-for="Notes" class="control-label"></label>
                 <input asp-for="Notes" class="form-control" />
                 <span asp-validation-for="Notes" class="text-danger"></span>
             </div>
+
             <div class="form-group">
-                <label asp-for="PatientId" class="control-label"></label>
-                <select asp-for="PatientId" class="form-control" asp-items="ViewBag.PatientId"></select>
-                <span asp-validation-for="PatientId" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="PersonnelId" class="control-label"></label>
-                <select asp-for="PersonnelId" class="form-control" asp-items="ViewBag.PersonnelId"></select>
-                <span asp-validation-for="PersonnelId" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="AvailableDayId" class="control-label"></label>
+                <label asp-for="AvailableDayId" class="control-label">Appointment (Date - Personnel)</label>
                 <select asp-for="AvailableDayId" class="form-control" asp-items="ViewBag.AvailableDayId"></select>
                 <span asp-validation-for="AvailableDayId" class="text-danger"></span>
             </div>
+
+            <!-- Small static label informing user about changing the slot (no JS) -->
+            <p class="text-muted small" style="margin-top:6px;">
+                Selecting a different slot will change the appointment to the chosen date/personnel.
+            </p>
+
             <div class="form-group">
                 <input type="submit" value="Save" class="btn btn-primary" />
             </div>
@@ -46,7 +44,7 @@
 </div>
 
 <div>
-    <a asp-action="Index">Back to List</a>
+    <a asp-action="ManageAdmin">Back to List</a>
 </div>
 
 @section Scripts {
