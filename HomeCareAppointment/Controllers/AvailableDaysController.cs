@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using HomeCareAppointment.DAL;
 using HomeCareAppointment.Models;
+using Microsoft.Extensions.Logging;
 
 namespace HomeCareAppointment.Controllers
 {
@@ -10,37 +11,68 @@ namespace HomeCareAppointment.Controllers
     {
         private readonly IAvailableDayRepository _days;
         private readonly IPersonnelRepository _personnel;
+        private readonly ILogger<AvailableDaysController> _logger;
 
         public AvailableDaysController(
             IAvailableDayRepository days,
-            IPersonnelRepository personnel)
+            IPersonnelRepository personnel,
+            ILogger<AvailableDaysController> logger)
         {
             _days = days;
             _personnel = personnel;
+            _logger = logger;
         }
 
         // GET: AvailableDays
         public async Task<IActionResult> Index()
         {
-            var list = await _days.GetAllWithRelationsAsync();
-            return View(list);
+            try
+            {
+                var list = await _days.GetAllWithRelationsAsync();
+                return View(list);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AvailableDaysController] Index failed");
+                return View("Error", "Could not load available days");
+            }
         }
 
         // GET: AvailableDays/Details/5
         public async Task<IActionResult> Details(int? id)
         {
             if (id is null) return NotFound();
-            var day = await _days.GetByIdWithRelationsAsync(id.Value);
-            if (day is null) return NotFound();
-            return View(day);
+            try
+            {
+                var day = await _days.GetByIdWithRelationsAsync(id.Value);
+                if (day == null)
+                {
+                    _logger.LogError("[AvailableDaysController] Details: AvailableDay not found for Id {AvailableDayId:0000}", id.Value);
+                    return NotFound();
+                }
+                return View(day);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AvailableDaysController] Details failed for Id {AvailableDayId:0000}", id.Value);
+                return BadRequest();
+            }
         }
 
         // GET: AvailableDays/Create
         public async Task<IActionResult> Create()
         {
-            var personnels = await _personnel.GetAllAsync();
-            ViewData["PersonnelId"] = new SelectList(personnels, "Id", "Name");
-            return View();
+            try
+            {
+                var personnels = await _personnel.GetAllAsync();
+                ViewData["PersonnelId"] = new SelectList(personnels, "Id", "Name");
+                return View();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AvailableDaysController] Create GET failed");
+                return BadRequest();
+            }
         }
 
         // POST: AvailableDays/Create
@@ -54,20 +86,41 @@ namespace HomeCareAppointment.Controllers
                 return View(model);
             }
 
-            await _days.CreateAsync(model);
-            return RedirectToAction(nameof(Index));
+            try
+            {
+                var result = await _days.CreateAsync(model);
+                if (!result)
+                {
+                    _logger.LogError("[AvailableDaysController] Create POST failed {@AvailableDay}", model);
+                    return BadRequest();
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AvailableDaysController] Create POST exception {@AvailableDay}", model);
+                return BadRequest();
+            }
         }
 
         // GET: AvailableDays/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
             if (id is null) return NotFound();
-            var model = await _days.GetByIdAsync(id.Value);
-            if (model is null) return NotFound();
+            try
+            {
+                var model = await _days.GetByIdAsync(id.Value);
+                if (model == null) return NotFound();
 
-            var personnels = await _personnel.GetAllAsync();
-            ViewData["PersonnelId"] = new SelectList(personnels, "Id", "Name", model.PersonnelId);
-            return View(model);
+                var personnels = await _personnel.GetAllAsync();
+                ViewData["PersonnelId"] = new SelectList(personnels, "Id", "Name", model.PersonnelId);
+                return View(model);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AvailableDaysController] Edit GET failed for Id {AvailableDayId:0000}", id.Value);
+                return BadRequest();
+            }
         }
 
         // POST: AvailableDays/Edit/5
@@ -83,31 +136,73 @@ namespace HomeCareAppointment.Controllers
                 return View(model);
             }
 
-            await _days.UpdateAsync(model);
-            return RedirectToAction(nameof(Index));
+            try
+            {
+                var result = await _days.UpdateAsync(model);
+                if (!result)
+                {
+                    _logger.LogError("[AvailableDaysController] Edit POST failed {@AvailableDay}", model);
+                    return BadRequest();
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AvailableDaysController] Edit POST exception {@AvailableDay}", model);
+                return BadRequest();
+            }
         }
 
         // GET: AvailableDays/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
             if (id is null) return NotFound();
-            var day = await _days.GetByIdWithRelationsAsync(id.Value);
-            if (day is null) return NotFound();
-            return View(day);
+            try
+            {
+                var day = await _days.GetByIdWithRelationsAsync(id.Value);
+                if (day == null) return NotFound();
+                return View(day);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AvailableDaysController] Delete GET failed for Id {AvailableDayId:0000}", id.Value);
+                return BadRequest();
+            }
         }
 
         // POST: AvailableDays/Delete/5
         [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            await _days.DeleteAsync(id);
-            return RedirectToAction(nameof(Index));
+            try
+            {
+                var result = await _days.DeleteAsync(id);
+                if (!result)
+                {
+                    _logger.LogError("[AvailableDaysController] Delete POST failed for Id {AvailableDayId:0000}", id);
+                    return BadRequest();
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AvailableDaysController] Delete POST exception for Id {AvailableDayId:0000}", id);
+                return BadRequest();
+            }
         }
 
         private async Task<bool> AvailableDayExists(int id)
         {
-            var d = await _days.GetByIdAsync(id);
-            return d != null;
+            try
+            {
+                var d = await _days.GetByIdAsync(id);
+                return d != null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AvailableDaysController] AvailableDayExists check failed for Id {AvailableDayId:0000}", id);
+                return false;
+            }
         }
     }
 }

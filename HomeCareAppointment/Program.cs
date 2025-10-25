@@ -1,6 +1,8 @@
 using HomeCareAppointment.DAL;     // <- Repo + DbContext ligger i DAL
 using HomeCareAppointment.Models;  // <- Hvis brukt andre steder; kan fjernes om ubrukt
 using Microsoft.EntityFrameworkCore;
+using Serilog;                     // <- Serilog for logging
+using Serilog.Events;             // <- For filtrering av loggnivåer
 
 namespace HomeCareAppointment
 {
@@ -9,6 +11,21 @@ namespace HomeCareAppointment
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            // === Serilog-konfigurasjon ===
+            var loggerConfiguration = new LoggerConfiguration()
+                .MinimumLevel.Information() // levels: Trace < Information < Warning < Error < Fatal
+                .WriteTo.File($"Logs/app_{DateTime.Now:yyyyMMdd_HHmmss}.log");
+
+            // Filtrer ut EF Core "Executed DbCommand"-logging på Information-nivå
+            loggerConfiguration.Filter.ByExcluding(e =>
+                e.Properties.TryGetValue("SourceContext", out var value) &&
+                e.Level == LogEventLevel.Information &&
+                e.MessageTemplate.Text.Contains("Executed DbCommand"));
+
+            var logger = loggerConfiguration.CreateLogger();
+            builder.Logging.ClearProviders(); // Valgfritt: fjerner standard loggere
+            builder.Logging.AddSerilog(logger);
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();

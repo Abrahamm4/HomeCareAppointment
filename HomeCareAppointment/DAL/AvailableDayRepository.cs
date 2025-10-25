@@ -4,90 +4,172 @@ using System.Linq;
 using System.Threading.Tasks;
 using HomeCareAppointment.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace HomeCareAppointment.DAL
 {
     public class AvailableDayRepository : IAvailableDayRepository
     {
         private readonly AvailableDayDbContext _db;
-        public AvailableDayRepository(AvailableDayDbContext db) => _db = db;
+        private readonly ILogger<AvailableDayRepository> _logger;
+
+        public AvailableDayRepository(AvailableDayDbContext db, ILogger<AvailableDayRepository> logger)
+        {
+            _db = db;
+            _logger = logger;
+        }
 
         // --- Grunnleggende CRUD ---
-
-        public async Task<IEnumerable<AvailableDay>> GetAllAsync()
+        public async Task<IEnumerable<AvailableDay>?> GetAllAsync()
         {
-            var list = await _db.AvailableDays
-                                .AsNoTracking()
-                                .ToListAsync(); // hent først
-            return list.OrderBy(d => d.Date)
-                       .ThenBy(d => d.StartTime); // sorter i minnet (TimeSpan-safe)
+            try
+            {
+                var list = await _db.AvailableDays.AsNoTracking().ToListAsync();
+                return list.OrderBy(d => d.Date).ThenBy(d => d.StartTime);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AvailableDayRepository] GetAllAsync failed");
+                return null;
+            }
         }
 
-        public async Task<AvailableDay?> GetByIdAsync(int id) =>
-            await _db.AvailableDays.FindAsync(id);
-
-        public async Task<IEnumerable<AvailableDay>> GetByPersonnelAsync(int personnelId)
+        public async Task<AvailableDay?> GetByIdAsync(int id)
         {
-            var list = await _db.AvailableDays
-                                .AsNoTracking()
-                                .Where(d => d.PersonnelId == personnelId)
-                                .ToListAsync();
-            return list.OrderBy(d => d.Date)
-                       .ThenBy(d => d.StartTime); // sorter i minnet
+            try
+            {
+                return await _db.AvailableDays.FindAsync(id);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AvailableDayRepository] GetByIdAsync failed for Id {AvailableDayId:0000}", id);
+                return null;
+            }
         }
 
-        public async Task<IEnumerable<AvailableDay>> GetByDateAsync(DateTime date)
+        public async Task<IEnumerable<AvailableDay>?> GetByPersonnelAsync(int personnelId)
         {
-            // Robust interval-filtrering: [00:00, 24:00)
-            var start = date.Date;
-            var end = start.AddDays(1);
-
-            var list = await _db.AvailableDays
-                                .AsNoTracking()
-                                .Where(d => d.Date >= start && d.Date < end)
-                                .ToListAsync();
-
-            return list.OrderBy(d => d.StartTime); // sorter i minnet
+            try
+            {
+                var list = await _db.AvailableDays
+                                    .AsNoTracking()
+                                    .Where(d => d.PersonnelId == personnelId)
+                                    .ToListAsync();
+                return list.OrderBy(d => d.Date).ThenBy(d => d.StartTime);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AvailableDayRepository] GetByPersonnelAsync failed for PersonnelId {PersonnelId:0000}", personnelId);
+                return null;
+            }
         }
 
-        public async Task CreateAsync(AvailableDay day)
+        public async Task<IEnumerable<AvailableDay>?> GetByDateAsync(DateTime date)
         {
-            _db.AvailableDays.Add(day);
-            await _db.SaveChangesAsync();
+            try
+            {
+                var start = date.Date;
+                var end = start.AddDays(1);
+
+                var list = await _db.AvailableDays
+                                    .AsNoTracking()
+                                    .Where(d => d.Date >= start && d.Date < end)
+                                    .ToListAsync();
+
+                return list.OrderBy(d => d.StartTime);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AvailableDayRepository] GetByDateAsync failed for Date {Date}", date);
+                return null;
+            }
         }
 
-        public async Task UpdateAsync(AvailableDay day)
+        public async Task<bool> CreateAsync(AvailableDay day)
         {
-            _db.AvailableDays.Update(day);
-            await _db.SaveChangesAsync();
+            try
+            {
+                _db.AvailableDays.Add(day);
+                await _db.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AvailableDayRepository] CreateAsync failed {@AvailableDay}", day);
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateAsync(AvailableDay day)
+        {
+            try
+            {
+                _db.AvailableDays.Update(day);
+                await _db.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AvailableDayRepository] UpdateAsync failed {@AvailableDay}", day);
+                return false;
+            }
         }
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var entity = await _db.AvailableDays.FindAsync(id);
-            if (entity == null) return false;
-            _db.AvailableDays.Remove(entity);
-            await _db.SaveChangesAsync();
-            return true;
+            try
+            {
+                var entity = await _db.AvailableDays.FindAsync(id);
+                if (entity == null)
+                {
+                    _logger.LogError("[AvailableDayRepository] DeleteAsync failed, not found Id {AvailableDayId:0000}", id);
+                    return false;
+                }
+
+                _db.AvailableDays.Remove(entity);
+                await _db.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AvailableDayRepository] DeleteAsync failed for Id {AvailableDayId:0000}", id);
+                return false;
+            }
         }
 
         // --- Med relasjoner ---
-
-        public async Task<IEnumerable<AvailableDay>> GetAllWithRelationsAsync()
+        public async Task<IEnumerable<AvailableDay>?> GetAllWithRelationsAsync()
         {
-            var list = await _db.AvailableDays
-                                .Include(d => d.Personnel)
-                                .Include(d => d.Appointment)
-                                .AsNoTracking()
-                                .ToListAsync(); // hent først
-            return list.OrderBy(d => d.Date)
-                       .ThenBy(d => d.StartTime); // sorter i minnet
+            try
+            {
+                var list = await _db.AvailableDays
+                                    .Include(d => d.Personnel)
+                                    .Include(d => d.Appointment)
+                                    .AsNoTracking()
+                                    .ToListAsync();
+                return list.OrderBy(d => d.Date).ThenBy(d => d.StartTime);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AvailableDayRepository] GetAllWithRelationsAsync failed");
+                return null;
+            }
         }
 
-        public async Task<AvailableDay?> GetByIdWithRelationsAsync(int id) =>
-            await _db.AvailableDays
-                     .Include(d => d.Personnel)
-                     .Include(d => d.Appointment)
-                     .FirstOrDefaultAsync(d => d.Id == id);
+        public async Task<AvailableDay?> GetByIdWithRelationsAsync(int id)
+        {
+            try
+            {
+                return await _db.AvailableDays
+                                .Include(d => d.Personnel)
+                                .Include(d => d.Appointment)
+                                .FirstOrDefaultAsync(d => d.Id == id);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AvailableDayRepository] GetByIdWithRelationsAsync failed for Id {AvailableDayId:0000}", id);
+                return null;
+            }
+        }
     }
 }
