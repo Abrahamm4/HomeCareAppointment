@@ -12,10 +12,11 @@ namespace HomeCareAppointment
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Serilog: logging til fil
+            // Serilog: logging til ny fil med timestamp for hver kjøring
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
-                .WriteTo.File("Logs/app.log", rollingInterval: RollingInterval.Day)
+                .WriteTo.File($"Logs/app_{timestamp}.log")
                 .Filter.ByExcluding(e =>
                     e.Properties.TryGetValue("SourceContext", out var value) &&
                     e.Level == LogEventLevel.Information &&
