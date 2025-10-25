@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 
 namespace HomeCareAppointment.Controllers
 {
-    [Route("[controller]")] // -> /Patient/...
     public class PatientController : Controller
     {
         private readonly IPatientRepository _repo;
@@ -19,8 +18,7 @@ namespace HomeCareAppointment.Controllers
             _logger = logger;
         }
 
-        [HttpGet("")]
-        [HttpGet("Table")]
+        // GET: /Patient
         public async Task<IActionResult> Index()
         {
             try
@@ -35,7 +33,7 @@ namespace HomeCareAppointment.Controllers
             }
         }
 
-        [HttpGet("Details/{id:int}")]
+        // GET: /Patient/Details/5
         public async Task<IActionResult> Details(int id)
         {
             try
@@ -51,10 +49,11 @@ namespace HomeCareAppointment.Controllers
             }
         }
 
-        [HttpGet("Create")]
+        // GET: /Patient/Create
         public IActionResult Create() => View(new Patient());
 
-        [HttpPost("Create"), ValidateAntiForgeryToken]
+        // POST: /Patient/Create
+        [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Patient model)
         {
             if (!ModelState.IsValid) return View(model);
@@ -76,7 +75,7 @@ namespace HomeCareAppointment.Controllers
             }
         }
 
-        [HttpGet("Edit/{id:int}")]
+        // GET: /Patient/Edit/5
         public async Task<IActionResult> Edit(int id)
         {
             try
@@ -92,7 +91,8 @@ namespace HomeCareAppointment.Controllers
             }
         }
 
-        [HttpPost("Edit"), ValidateAntiForgeryToken]
+        // POST: /Patient/Edit
+        [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(Patient model)
         {
             if (!ModelState.IsValid) return View(model);
@@ -114,7 +114,7 @@ namespace HomeCareAppointment.Controllers
             }
         }
 
-        [HttpGet("Delete/{id:int}")]
+        // GET: /Patient/Delete/5
         public async Task<IActionResult> Delete(int id)
         {
             try
@@ -130,7 +130,8 @@ namespace HomeCareAppointment.Controllers
             }
         }
 
-        [HttpPost("Delete"), ActionName("Delete"), ValidateAntiForgeryToken]
+        // POST: /Patient/Delete
+        [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             try

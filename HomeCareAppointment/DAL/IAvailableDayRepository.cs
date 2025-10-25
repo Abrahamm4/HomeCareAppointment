@@ -7,7 +7,7 @@ namespace HomeCareAppointment.DAL
 {
     public interface IAvailableDayRepository
     {
-        // --- Grunnleggende CRUD ---
+        //Basis CRUD
         Task<IEnumerable<AvailableDay>?> GetAllAsync();
         Task<AvailableDay?> GetByIdAsync(int id);
         Task<IEnumerable<AvailableDay>?> GetByPersonnelAsync(int personnelId);
@@ -17,7 +17,7 @@ namespace HomeCareAppointment.DAL
         Task<bool> UpdateAsync(AvailableDay day);
         Task<bool> DeleteAsync(int id);
 
-        // --- Med relasjoner ---
+        //Med relasjoner
         Task<IEnumerable<AvailableDay>?> GetAllWithRelationsAsync();
         Task<AvailableDay?> GetByIdWithRelationsAsync(int id);
     }

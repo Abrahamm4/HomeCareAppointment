@@ -19,7 +19,7 @@ namespace HomeCareAppointment.DAL
             _logger = logger;
         }
 
-        // --- Grunnleggende CRUD ---
+        //Grunnleggende CRUD
         public async Task<IEnumerable<AvailableDay>?> GetAllAsync()
         {
             try
@@ -137,7 +137,7 @@ namespace HomeCareAppointment.DAL
             }
         }
 
-        // --- Med relasjoner ---
+        //Med relasjoner
         public async Task<IEnumerable<AvailableDay>?> GetAllWithRelationsAsync()
         {
             try
