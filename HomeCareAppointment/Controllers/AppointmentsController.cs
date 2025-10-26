@@ -258,5 +258,88 @@ namespace HomeCareAppointment.Controllers
                 return BadRequest();
             }
         }
+        // GET: Appointments/ManageAdmin
+        public async Task<IActionResult> ManageAdmin()
+        {
+            try
+            {
+                var appointments = await _appointments.GetAllWithRelationsAsync() ?? Enumerable.Empty<Appointment>();
+                var ordered = appointments.OrderBy(a => a.AvailableDay?.Date).ToList();
+
+                return View("Manage", ordered);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AppointmentsController] ManageAdmin failed");
+                return View("Error", new { message = "Failed to load admin appointment management." });
+            }
+}
+
+        // POST: Appointments/ManagePatient
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ManagePatient(int patientId)
+        {
+            try
+            {
+                var patient = await _patients.GetByIdAsync(patientId);
+                if (patient == null)
+                {
+                    _logger.LogWarning("[AppointmentsController] ManagePatient POST - No patient found for ID {PatientId}", patientId);
+                    return NotFound();
+                }
+
+                var appointments = (await _appointments.GetAllWithRelationsAsync() ?? Enumerable.Empty<Appointment>())
+                    .Where(a => a.PatientId == patientId)
+                    .OrderBy(a => a.AvailableDay?.Date)
+                    .ToList();
+
+                ViewData["PatientMode"] = true;
+                ViewData["SelectedPatient"] = patient;
+
+                return View("Manage", appointments);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AppointmentsController] ManagePatient POST failed for patientId {PatientId}", patientId);
+                return View("Error", new { message = "Failed to load patient appointments." });
+            }
+        }
+
+        // GET: Appointments/ManagePatient
+        [HttpGet]
+        public async Task<IActionResult> ManagePatient(int? patientId)
+        {
+            if (patientId == null)
+            {
+                _logger.LogWarning("[AppointmentsController] ManagePatient GET - Missing patientId");
+                return BadRequest();
+            }
+
+            try
+            {
+                var patient = await _patients.GetByIdAsync(patientId.Value);
+                if (patient == null)
+                {
+                    _logger.LogWarning("[AppointmentsController] ManagePatient GET - No patient found for ID {PatientId}", patientId);
+                    return NotFound();
+                }
+
+                var appointments = (await _appointments.GetAllWithRelationsAsync() ?? Enumerable.Empty<Appointment>())
+                    .Where(a => a.PatientId == patientId.Value)
+                    .OrderBy(a => a.AvailableDay?.Date)
+                    .ToList();
+
+                ViewData["PatientMode"] = true;
+                ViewData["SelectedPatient"] = patient;
+
+                return View("Manage", appointments);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AppointmentsController] ManagePatient GET failed for patientId {PatientId}", patientId);
+                return View("Error", new { message = "Failed to load patient appointments." });
+            }
+        }
     }
 }
