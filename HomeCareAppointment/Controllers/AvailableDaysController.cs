@@ -78,8 +78,7 @@ namespace HomeCareAppointment.Controllers
         // POST: AvailableDays/Create
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,PersonnelId,Date,StartTime,EndTime")] AvailableDay model)
-        {
-            if (!ModelState.IsValid)
+        {            if (ModelState.IsValid)
             {
                 var personnels = await _personnel.GetAllAsync();
                 ViewData["PersonnelId"] = new SelectList(personnels, "Id", "Name", model.PersonnelId);
