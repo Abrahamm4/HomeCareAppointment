@@ -1,222 +1,345 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Threading.Tasks;
 using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
+using HomeCareAppointment.DAL;
 using HomeCareAppointment.Models;
+using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
 
 namespace HomeCareAppointment.Controllers
 {
     public class AppointmentsController : Controller
     {
-        private readonly AvailableDayDbContext _context;
+        private readonly IAppointmentRepository _appointments;
+        private readonly IAvailableDayRepository _days;
+        private readonly IPatientRepository _patients;
+        private readonly IPersonnelRepository _personnels;
+        private readonly ILogger<AppointmentsController> _logger;
 
-        public AppointmentsController(AvailableDayDbContext context)
+        public AppointmentsController(
+            IAppointmentRepository appointments,
+            IAvailableDayRepository days,
+            IPatientRepository patients,
+            IPersonnelRepository personnels,
+            ILogger<AppointmentsController> logger)
         {
-            _context = context;
+            _appointments = appointments;
+            _days = days;
+            _patients = patients;
+            _personnels = personnels;
+            _logger = logger;
         }
 
         // GET: Appointments
         public async Task<IActionResult> Index()
         {
-            var days = await _context.AvailableDays
-                .Include(d => d.Personnel)
-                .Include(d => d.Appointment)
-                .ToListAsync();
+            try
+            {
+                var days = await _days.GetAllWithRelationsAsync() ?? Enumerable.Empty<AvailableDay>();
+                var patients = await _patients.GetAllAsync() ?? Enumerable.Empty<Patient>();
 
-            return View(days);
+                ViewBag.Patients = patients;
+                return View(days);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AppointmentsController] Index failed");
+                return View("Error", new { message = "Failed to load appointments." });
+            }
         }
 
         // GET: Appointments/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id is null) return NotFound();
 
-            var appointment = await _context.Appointments
-                .Include(a => a.AvailableDay)
-                .Include(a => a.Patient)
-                .Include(a => a.Personnel)
-                .FirstOrDefaultAsync(m => m.AppointmentId == id);
-            if (appointment == null)
+            try
             {
-                return NotFound();
+                var appt = await _appointments.GetByIdWithRelationsAsync(id.Value);
+                if (appt is null) return NotFound();
+                return View(appt);
             }
-
-            return View(appointment);
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AppointmentsController] Details failed for Id {Id}", id);
+                return BadRequest();
+            }
         }
 
-        // GET: Appointments/Create
-        public IActionResult Create(int availableDayId)
+        // GET: Appointments/Create?availableDayId=#
+        public async Task<IActionResult> Create(int availableDayId)
         {
-            var day = _context.AvailableDays
-                .Include(d => d.Personnel)
-                .Include(d => d.Appointment)
-                .FirstOrDefault(d => d.Id == availableDayId);
-
-            if (day == null) return NotFound();
-
-            if (day.Appointment != null)
+            try
             {
-                // Slot already booked
-                return BadRequest("Selected slot is already booked.");
+                var day = await _days.GetByIdWithRelationsAsync(availableDayId);
+                if (day is null) return NotFound();
+
+                if (day.Appointment != null) return BadRequest("Selected slot is already booked.");
+
+                ViewBag.AvailableDayInfo = $"{day.Personnel?.Name} - {day.Date:dd MMM yyyy} {day.StartTime}-{day.EndTime}";
+                ViewBag.AvailableDayId = day.Id;
+
+                var allPatients = await _patients.GetAllAsync() ?? Enumerable.Empty<Patient>();
+                ViewBag.PatientId = new SelectList(allPatients, "PatientId", "Name");
+
+                var model = new Appointment
+                {
+                    AvailableDayId = day.Id,
+                    Date = day.Date
+                };
+                return View(model);
             }
-
-            ViewBag.AvailableDayInfo = $"{day.Personnel?.Name} - {day.Date:dd MMM yyyy} {day.StartTime}-{day.EndTime}";
-            ViewBag.AvailableDayId = day.Id;
-
-            // Temporary patient dropdown until authentication is added
-            ViewBag.PatientId = new SelectList(_context.Patients, "PatientId", "Name");
-
-            // Provide an Appointment model instance so the view's tag helpers can work
-            var model = new Appointment
+            catch (Exception e)
             {
-                AvailableDayId = day.Id,
-                Date = day.Date
-            };
-
-            return View(model);
+                _logger.LogError(e, "[AppointmentsController] Create(GET) failed for AvailableDayId {Id}", availableDayId);
+                return BadRequest();
+            }
         }
 
         // POST: Appointments/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+        [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("PatientId,AvailableDayId,Notes")] Appointment appointment)
         {
             if (appointment == null) return BadRequest();
 
-            // Get the chosen AvailableDay and its personnel
-            var day = await _context.AvailableDays
-                .Include(d => d.Personnel)
-                .Include(d => d.Appointment)
-                .FirstOrDefaultAsync(d => d.Id == appointment.AvailableDayId);
-
-            if (day == null) return NotFound();
-
-            if (day.Appointment != null)
+            try
             {
-                ModelState.AddModelError(string.Empty, "This slot is already booked.");
-                ViewBag.PatientId = new SelectList(_context.Patients, "PatientId", "Name", appointment.PatientId);
-                ViewBag.AvailableDayInfo = $"{day.Personnel?.Name} - {day.Date:dd MMM yyyy} {day.StartTime}-{day.EndTime}";
-                return View(appointment);
+                var day = await _days.GetByIdWithRelationsAsync(appointment.AvailableDayId);
+                if (day == null) return NotFound();
+
+                if (day.Appointment != null)
+                {
+                    ModelState.AddModelError(string.Empty, "This slot is already booked.");
+                    var allPatients = await _patients.GetAllAsync() ?? Enumerable.Empty<Patient>();
+                    ViewBag.PatientId = new SelectList(allPatients, "PatientId", "Name", appointment.PatientId);
+                    ViewBag.AvailableDayInfo = $"{day.Personnel?.Name} - {day.Date:dd MMM yyyy} {day.StartTime}-{day.EndTime}";
+                    return View(appointment);
+                }
+
+                appointment.PersonnelId = day.PersonnelId;
+                appointment.Date = day.Date;
+
+                if (!ModelState.IsValid)
+                {
+                    var allPatients = await _patients.GetAllAsync() ?? Enumerable.Empty<Patient>();
+                    ViewBag.PatientId = new SelectList(allPatients, "PatientId", "Name", appointment.PatientId);
+                    ViewBag.AvailableDayInfo = $"{day.Personnel?.Name} - {day.Date:dd MMM yyyy} {day.StartTime}-{day.EndTime}";
+                    return View(appointment);
+                }
+
+                var success = await _appointments.CreateAsync(appointment);
+                if (!success) _logger.LogError("[AppointmentsController] Create failed for appointment {@Appointment}", appointment);
+
+                return RedirectToAction(nameof(Index));
             }
-
-            // Set derived values that are not posted from the form
-            appointment.PersonnelId = day.PersonnelId;
-            appointment.Date = day.Date;
-
-            if (!ModelState.IsValid)
+            catch (Exception e)
             {
-                ViewBag.PatientId = new SelectList(_context.Patients, "PatientId", "Name", appointment.PatientId);
-                ViewBag.AvailableDayInfo = $"{day.Personnel?.Name} - {day.Date:dd MMM yyyy} {day.StartTime}-{day.EndTime}";
-                return View(appointment);
+                _logger.LogError(e, "[AppointmentsController] Create(POST) failed");
+                return BadRequest();
             }
-
-            _context.Add(appointment);
-
-            await _context.SaveChangesAsync();
-
-            return RedirectToAction(nameof(Index));
         }
 
         // GET: Appointments/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id is null) return NotFound();
 
-            var appointment = await _context.Appointments.FindAsync(id);
-            if (appointment == null)
+            try
             {
-                return NotFound();
+                var appt = await _appointments.GetByIdWithRelationsAsync(id.Value);
+                if (appt == null) return NotFound();
+
+                var allDays = await _days.GetAllWithRelationsAsync() ?? Enumerable.Empty<AvailableDay>();
+                var days = allDays.Where(d => d.Appointment == null || d.Id == appt.AvailableDayId).ToList();
+
+                var selectItems = days.Select(d => new {
+                    d.Id,
+                    Text = $"{d.Personnel?.Name} - {d.Date:dd MMM yyyy} {d.StartTime:hh\\:mm}-{d.EndTime:hh\\:mm}"
+                }).ToList();
+
+                ViewBag.AvailableDayId = new SelectList(selectItems, "Id", "Text", appt.AvailableDayId);
+                ViewBag.PatientName = appt.Patient?.Name;
+                ViewBag.OriginalAvailableDayId = appt.AvailableDayId;
+
+                return View(appt);
             }
-            ViewData["AvailableDayId"] = new SelectList(_context.AvailableDays, "Id", "Id", appointment.AvailableDayId);
-            ViewData["PatientId"] = new SelectList(_context.Set<Patient>(), "PatientId", "Name", appointment.PatientId);
-            ViewData["PersonnelId"] = new SelectList(_context.Personnels, "Id", "Id", appointment.PersonnelId);
-            return View(appointment);
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AppointmentsController] Edit(GET) failed for Id {Id}", id);
+                return BadRequest();
+            }
         }
 
         // POST: Appointments/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("AppointmentId,Date,Notes,PatientId,PersonnelId,AvailableDayId")] Appointment appointment)
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, [Bind("AppointmentId,Notes,AvailableDayId")] Appointment appointment)
         {
-            if (id != appointment.AppointmentId)
-            {
-                return NotFound();
-            }
+            if (appointment == null || id != appointment.AppointmentId) return BadRequest();
 
-            if (ModelState.IsValid)
+            try
             {
-                try
+                var original = await _appointments.GetByIdWithRelationsAsync(id);
+                if (original == null) return NotFound();
+
+                if (appointment.AvailableDayId != original.AvailableDayId)
                 {
-                    _context.Update(appointment);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!AppointmentExists(appointment.AppointmentId))
+                    var newDay = await _days.GetByIdWithRelationsAsync(appointment.AvailableDayId);
+                    if (newDay == null) return NotFound();
+
+                    if (newDay.Appointment != null)
                     {
-                        return NotFound();
+                        ModelState.AddModelError(string.Empty, "Selected slot is already booked.");
+                        return View(original);
                     }
-                    else
+
+                    var newAppointment = new Appointment
                     {
-                        throw;
-                    }
+                        PatientId = original.PatientId,
+                        PersonnelId = newDay.PersonnelId,
+                        AvailableDayId = newDay.Id,
+                        Date = newDay.Date,
+                        Notes = appointment.Notes
+                    };
+
+                    var created = await _appointments.CreateAsync(newAppointment);
+                    if (!created) _logger.LogError("[AppointmentsController] Edit failed creating new appointment {@Appointment}", newAppointment);
+
+                    var deleted = await _appointments.DeleteAsync(original.AppointmentId);
+                    if (!deleted) _logger.LogError("[AppointmentsController] Edit failed deleting original appointment {@Appointment}", original);
+
+                    return RedirectToAction(nameof(Index));
                 }
+
+                original.Notes = appointment.Notes;
+                var updated = await _appointments.UpdateAsync(original);
+                if (!updated) _logger.LogError("[AppointmentsController] Edit failed updating appointment {@Appointment}", original);
+
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["AvailableDayId"] = new SelectList(_context.AvailableDays, "Id", "Id", appointment.AvailableDayId);
-            ViewData["PatientId"] = new SelectList(_context.Set<Patient>(), "PatientId", "Name", appointment.PatientId);
-            ViewData["PersonnelId"] = new SelectList(_context.Personnels, "Id", "Id", appointment.PersonnelId);
-            return View(appointment);
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AppointmentsController] Edit(POST) failed for Id {Id}", id);
+                return BadRequest();
+            }
         }
 
         // GET: Appointments/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id is null) return NotFound();
 
-            var appointment = await _context.Appointments
-                .Include(a => a.AvailableDay)
-                .Include(a => a.Patient)
-                .Include(a => a.Personnel)
-                .FirstOrDefaultAsync(m => m.AppointmentId == id);
-            if (appointment == null)
+            try
             {
-                return NotFound();
+                var appt = await _appointments.GetByIdWithRelationsAsync(id.Value);
+                if (appt == null) return NotFound();
+                return View(appt);
             }
-
-            return View(appointment);
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AppointmentsController] Delete(GET) failed for Id {Id}", id);
+                return BadRequest();
+            }
         }
 
         // POST: Appointments/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
+        [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var appointment = await _context.Appointments.FindAsync(id);
-            if (appointment != null)
+            try
             {
-                _context.Appointments.Remove(appointment);
+                var success = await _appointments.DeleteAsync(id);
+                if (!success) _logger.LogWarning("[AppointmentsController] DeleteConfirmed: Appointment not found for Id {Id}", id);
+                return RedirectToAction(nameof(Index));
             }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AppointmentsController] DeleteConfirmed failed for Id {Id}", id);
+                return BadRequest();
+            }
+        }
+        // GET: Appointments/ManageAdmin
+        public async Task<IActionResult> ManageAdmin()
+        {
+            try
+            {
+                var appointments = await _appointments.GetAllWithRelationsAsync() ?? Enumerable.Empty<Appointment>();
+                var ordered = appointments.OrderBy(a => a.AvailableDay?.Date).ToList();
 
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+                return View("Manage", ordered);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AppointmentsController] ManageAdmin failed");
+                return View("Error", new { message = "Failed to load admin appointment management." });
+            }
+}
+
+        // POST: Appointments/ManagePatient
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ManagePatient(int patientId)
+        {
+            try
+            {
+                var patient = await _patients.GetByIdAsync(patientId);
+                if (patient == null)
+                {
+                    _logger.LogWarning("[AppointmentsController] ManagePatient POST - No patient found for ID {PatientId}", patientId);
+                    return NotFound();
+                }
+
+                var appointments = (await _appointments.GetAllWithRelationsAsync() ?? Enumerable.Empty<Appointment>())
+                    .Where(a => a.PatientId == patientId)
+                    .OrderBy(a => a.AvailableDay?.Date)
+                    .ToList();
+
+                ViewData["PatientMode"] = true;
+                ViewData["SelectedPatient"] = patient;
+
+                return View("Manage", appointments);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AppointmentsController] ManagePatient POST failed for patientId {PatientId}", patientId);
+                return View("Error", new { message = "Failed to load patient appointments." });
+            }
         }
 
-        private bool AppointmentExists(int id)
+        // GET: Appointments/ManagePatient
+        [HttpGet]
+        public async Task<IActionResult> ManagePatient(int? patientId)
         {
-            return _context.Appointments.Any(e => e.AppointmentId == id);
+            if (patientId == null)
+            {
+                _logger.LogWarning("[AppointmentsController] ManagePatient GET - Missing patientId");
+                return BadRequest();
+            }
+
+            try
+            {
+                var patient = await _patients.GetByIdAsync(patientId.Value);
+                if (patient == null)
+                {
+                    _logger.LogWarning("[AppointmentsController] ManagePatient GET - No patient found for ID {PatientId}", patientId);
+                    return NotFound();
+                }
+
+                var appointments = (await _appointments.GetAllWithRelationsAsync() ?? Enumerable.Empty<Appointment>())
+                    .Where(a => a.PatientId == patientId.Value)
+                    .OrderBy(a => a.AvailableDay?.Date)
+                    .ToList();
+
+                ViewData["PatientMode"] = true;
+                ViewData["SelectedPatient"] = patient;
+
+                return View("Manage", appointments);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[AppointmentsController] ManagePatient GET failed for patientId {PatientId}", patientId);
+                return View("Error", new { message = "Failed to load patient appointments." });
+            }
         }
     }
 }

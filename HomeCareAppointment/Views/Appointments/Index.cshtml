@@ -1,10 +1,37 @@
 ﻿@model IEnumerable<HomeCareAppointment.Models.AvailableDay>
 
 @{
-    ViewData["Title"] = "Available Slots";
+    ViewData["Title"] = "Book Appointment";
 }
 
-<h1>Available Slots</h1>
+<h1>Book Appointment</h1>
+
+<div class="d-flex flex-column align-items-start gap-2 mb-3">
+
+    <!-- Admin manage (later restrict to Admin role) -->
+    <a asp-controller="Appointments" asp-action="ManageAdmin"
+       class="btn btn-primary btn-app w-50">
+        Manage Bookings (Admin)
+    </a>
+
+    <!-- Patient manage with dropdown (later replaced by logged-in patient id) -->
+    <form asp-controller="Appointments" asp-action="ManagePatient" method="post" class="w-50">
+        <div class="input-group">
+            <select class="form-select" name="patientId" required>
+                <option value="">-- Select Patient --</option>
+                @foreach (var patient in (ViewBag.Patients as List<HomeCareAppointment.Models.Patient>) ?? Enumerable.Empty<HomeCareAppointment.Models.Patient>())
+                {
+                    <option value="@patient.PatientId">@patient.Name</option>
+                }
+            </select>
+            <button type="submit" class="btn btn-primary btn-app">
+                Manage Bookings (Patient)
+            </button>
+        </div>
+    </form>
+
+</div>
+
 
 <table class="table">
     <thead>
@@ -29,7 +56,7 @@
                     {
                         <form asp-controller="Appointments" asp-action="Create" method="get">
                             <input type="hidden" name="availableDayId" value="@day.Id" />
-                            <button type="submit" class="btn btn-primary btn-sm">Book</button>
+                            <button type="submit" class="btn btn-primary btn-app btn-app-sm">Book</button>
                         </form>
                     }
                     else

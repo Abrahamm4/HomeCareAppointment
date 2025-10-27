@@ -1,88 +1,151 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using HomeCareAppointment.DAL;
+using HomeCareAppointment.Models;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Threading.Tasks;
 
 namespace HomeCareAppointment.Controllers
 {
     public class PatientController : Controller
     {
-        // GET: PatientController
-        public ActionResult Index()
+        private readonly IPatientRepository _repo;
+        private readonly ILogger<PatientController> _logger;
+
+        public PatientController(IPatientRepository repo, ILogger<PatientController> logger)
         {
-            return View();
-        }
-        
-        // GET: PatientController/Table
-        public ActionResult Table()
-        {
-            return View();
+            _repo = repo;
+            _logger = logger;
         }
 
-        // GET: PatientController/Details/5
-        public ActionResult Details(int id)
-        {
-            return View();
-        }
-
-        // GET: PatientController/Create
-        public ActionResult Create()
-        {
-            return View();
-        }
-
-        // POST: PatientController/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Create(IFormCollection collection)
+        // GET: /Patient
+        public async Task<IActionResult> Index()
         {
             try
             {
-                return RedirectToAction(nameof(Index));
+                var patients = await _repo.GetAllAsync();
+                return View(patients);
             }
-            catch
+            catch (Exception e)
             {
-                return View();
+                _logger.LogError(e, "[PatientController] Index failed");
+                return View("Error", new { message = "Failed to load patients." });
             }
         }
 
-        // GET: PatientController/Edit/5
-        public ActionResult Edit(int id)
-        {
-            return View();
-        }
-
-        // POST: PatientController/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Edit(int id, IFormCollection collection)
+        // GET: /Patient/Details/5
+        public async Task<IActionResult> Details(int id)
         {
             try
             {
+                var patient = await _repo.GetByIdAsync(id);
+                if (patient == null) return NotFound();
+                return View(patient);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[PatientController] Details failed for Id {PatientId}", id);
+                return BadRequest();
+            }
+        }
+
+        // GET: /Patient/Create
+        public IActionResult Create() => View(new Patient());
+
+        // POST: /Patient/Create
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Patient model)
+        {
+            if (!ModelState.IsValid) return View(model);
+
+            try
+            {
+                var success = await _repo.CreateAsync(model);
+                if (!success)
+                {
+                    _logger.LogError("[PatientController] Create failed for {@Patient}", model);
+                    return BadRequest();
+                }
                 return RedirectToAction(nameof(Index));
             }
-            catch
+            catch (Exception e)
             {
-                return View();
+                _logger.LogError(e, "[PatientController] Create POST failed");
+                return BadRequest();
             }
         }
 
-        // GET: PatientController/Delete/5
-        public ActionResult Delete(int id)
-        {
-            return View();
-        }
-
-        // POST: PatientController/Delete/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Delete(int id, IFormCollection collection)
+        // GET: /Patient/Edit/5
+        public async Task<IActionResult> Edit(int id)
         {
             try
             {
+                var patient = await _repo.GetByIdAsync(id);
+                if (patient == null) return NotFound();
+                return View(patient);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[PatientController] Edit(GET) failed for Id {PatientId}", id);
+                return BadRequest();
+            }
+        }
+
+        // POST: /Patient/Edit
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(Patient model)
+        {
+            if (!ModelState.IsValid) return View(model);
+
+            try
+            {
+                var success = await _repo.UpdateAsync(model);
+                if (!success)
+                {
+                    _logger.LogError("[PatientController] Edit POST failed for {@Patient}", model);
+                    return BadRequest();
+                }
                 return RedirectToAction(nameof(Index));
             }
-            catch
+            catch (Exception e)
             {
-                return View();
+                _logger.LogError(e, "[PatientController] Edit POST failed");
+                return BadRequest();
+            }
+        }
+
+        // GET: /Patient/Delete/5
+        public async Task<IActionResult> Delete(int id)
+        {
+            try
+            {
+                var patient = await _repo.GetByIdAsync(id);
+                if (patient == null) return NotFound();
+                return View(patient);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[PatientController] Delete(GET) failed for Id {PatientId}", id);
+                return BadRequest();
+            }
+        }
+
+        // POST: /Patient/Delete
+        [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            try
+            {
+                var success = await _repo.DeleteAsync(id);
+                if (!success)
+                    _logger.LogWarning("[PatientController] DeleteConfirmed: Patient not found for Id {PatientId}", id);
+
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "[PatientController] DeleteConfirmed failed for Id {PatientId}", id);
+                return BadRequest();
             }
         }
     }

@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using HomeCareAppointment.Models;
 
-namespace HomeCareAppointment.Models
+namespace HomeCareAppointment.DAL
 {
     public class AvailableDayDbContext : DbContext
     {
@@ -26,7 +27,7 @@ namespace HomeCareAppointment.Models
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Configure one-to-one: AvailableDay <-> Appointment
+            // konfigerer one-to-one: AvailableDay <-> Appointment
             modelBuilder.Entity<AvailableDay>()
                 .HasOne(d => d.Appointment)
                 .WithOne(a => a.AvailableDay)
