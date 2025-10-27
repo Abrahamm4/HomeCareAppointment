@@ -49,7 +49,7 @@ namespace HomeCareAppointment.Controllers
             }
         }
 
-        // GET: Appointments/Details/5
+        // GET: Appointments/Details/{id}
         public async Task<IActionResult> Details(int? id)
         {
             if (id is null) return NotFound();
@@ -67,7 +67,7 @@ namespace HomeCareAppointment.Controllers
             }
         }
 
-        // GET: Appointments/Create?availableDayId=#
+        // GET: Appointments/Create/availableDayId=#
         public async Task<IActionResult> Create(int availableDayId)
         {
             try
@@ -140,7 +140,7 @@ namespace HomeCareAppointment.Controllers
             }
         }
 
-        // GET: Appointments/Edit/5
+        // GET: Appointments/Edit/{id}
         public async Task<IActionResult> Edit(int? id)
         {
             if (id is null) return NotFound();
@@ -171,7 +171,7 @@ namespace HomeCareAppointment.Controllers
             }
         }
 
-        // POST: Appointments/Edit/5
+        // POST: Appointments/Edit/{id}
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("AppointmentId,Notes,AvailableDayId")] Appointment appointment)
         {
@@ -224,7 +224,7 @@ namespace HomeCareAppointment.Controllers
             }
         }
 
-        // GET: Appointments/Delete/5
+        // GET: Appointments/Delete/{id}
         public async Task<IActionResult> Delete(int? id)
         {
             if (id is null) return NotFound();
@@ -242,7 +242,7 @@ namespace HomeCareAppointment.Controllers
             }
         }
 
-        // POST: Appointments/Delete/5
+        // POST: Appointments/Delete/{id}
         [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {

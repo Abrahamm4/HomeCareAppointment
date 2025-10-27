@@ -33,7 +33,7 @@ namespace HomeCareAppointment.Controllers
             }
         }
 
-        // GET: /Patient/Details/5
+        // GET: /Patient/Details/{id}
         public async Task<IActionResult> Details(int id)
         {
             try
@@ -75,7 +75,8 @@ namespace HomeCareAppointment.Controllers
             }
         }
 
-        // GET: /Patient/Edit/5
+        // GET: /Patient/Edit/{id}
+
         public async Task<IActionResult> Edit(int id)
         {
             try
@@ -114,7 +115,8 @@ namespace HomeCareAppointment.Controllers
             }
         }
 
-        // GET: /Patient/Delete/5
+        // GET: /Patient/Delete/{id}
+
         public async Task<IActionResult> Delete(int id)
         {
             try
