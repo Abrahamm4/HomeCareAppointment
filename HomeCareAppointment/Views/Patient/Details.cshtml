@@ -1,0 +1,20 @@
+@model HomeCareAppointment.Models.Patient
+@{
+ ViewData["Title"] = "Patient Details";
+}
+<h1>Patient Details</h1>
+<hr />
+<dl class="row">
+ <dt class="col-sm-2">Id</dt>
+ <dd class="col-sm-10">@Model.PatientId</dd>
+ <dt class="col-sm-2">Name</dt>
+ <dd class="col-sm-10">@Model.Name</dd>
+ <dt class="col-sm-2">Phone</dt>
+ <dd class="col-sm-10">@Model.Phone</dd>
+ <dt class="col-sm-2">Email</dt>
+ <dd class="col-sm-10">@Model.Email</dd>
+</dl>
+<p>
+ <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model.PatientId">Edit</a>
+ <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+</p>

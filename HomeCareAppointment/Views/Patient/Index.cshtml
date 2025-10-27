@@ -1,5 +1,33 @@
-@model  IEnumerable<Patient>
-
-<h1>List of Patients</h1>
-
-<partial name="_PatientTable" model="Model" />
+@model IEnumerable<HomeCareAppointment.Models.Patient>
+@{
+    ViewData["Title"] = "Patients";
+}
+<h1>Patients</h1>
+<p>
+    <a class="btn btn-primary" asp-action="Create">Create New</a>
+</p>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var p in Model ?? Enumerable.Empty<HomeCareAppointment.Models.Patient>())
+        {
+            <tr>
+                <td>@p.Name</td>
+                <td>@p.Phone</td>
+                <td>@p.Email</td>
+                <td>
+                    <a class="btn btn-sm btn-outline-secondary btn-app-sm ms-1" asp-action="Details" asp-route-id="@p.PatientId">Details</a>
+                    <a class="btn btn-sm btn-warning btn-app-sm" asp-action="Edit" asp-route-id="@p.PatientId">Edit</a>
+                    <a class="btn btn-sm btn-danger" asp-action="Delete" asp-route-id="@p.PatientId">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
