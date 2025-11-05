@@ -13,13 +13,16 @@ namespace HomeCareAppointment.Models
         // Navigation to Personnel
         public virtual Personnel? Personnel { get; set; }
 
+        [Required]
         [DataType(DataType.Date)]
         public DateTime Date { get; set; }
 
+        [Required]
         [DataType(DataType.Time)]
         [DisplayFormat(DataFormatString = "{0:hh\\:mm\\:ss}")]
         public TimeSpan StartTime { get; set; }
-        
+
+        [Required]        
         [DataType(DataType.Time)]
         [DisplayFormat(DataFormatString ="{0:hh\\:mm\\:ss}")]
         public TimeSpan EndTime { get; set; }

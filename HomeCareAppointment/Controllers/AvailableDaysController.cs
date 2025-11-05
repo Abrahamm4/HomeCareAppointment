@@ -78,7 +78,20 @@ namespace HomeCareAppointment.Controllers
         // POST: AvailableDays/Create
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,PersonnelId,Date,StartTime,EndTime")] AvailableDay model)
-        {            if (ModelState.IsValid)
+        {
+            if (model.Date < DateTime.Today)
+            {
+                ModelState.AddModelError("Date", "date cannot be in past");
+            }
+            if (model.EndTime <= model.StartTime)
+            {
+                ModelState.AddModelError("EndTime", "End comes after start");
+            }
+            var currentSlots = await _days.GetAllAsync() ?? new List<AvailableDay>();
+            var sameDaySlots = currentSlots.Where(s => s.PersonnelId == model.PersonnelId && s.Date.Date == model.Date.Date).ToList();
+            bool overlap = sameDaySlots.Any(s => (model.StartTime < s.EndTime) && (model.EndTime > s.StartTime));      
+            if(overlap){ ModelState.AddModelError("", "overlap with existing timeslot");}
+            if (!ModelState.IsValid)
             {
                 var personnels = await _personnel.GetAllAsync();
                 ViewData["PersonnelId"] = new SelectList(personnels, "Id", "Name", model.PersonnelId);
@@ -127,6 +140,19 @@ namespace HomeCareAppointment.Controllers
         public async Task<IActionResult> Edit(int id, [Bind("Id,PersonnelId,Date,StartTime,EndTime")] AvailableDay model)
         {
             if (id != model.Id) return NotFound();
+            
+            if (model.Date < DateTime.Today)
+            {
+                ModelState.AddModelError("Date", "date cannot be in past");
+            }
+            if (model.EndTime <= model.StartTime)
+            {
+                ModelState.AddModelError("EndTime", "End comes after start");
+            }
+            var currentSlots = await _days.GetAllAsync() ?? new List<AvailableDay>();
+            var sameDaySlots = currentSlots.Where(s => s.PersonnelId == model.PersonnelId && s.Date.Date == model.Date.Date).ToList();
+            bool overlap = sameDaySlots.Any(s => (model.StartTime < s.EndTime) && (model.EndTime > s.StartTime));      
+            if(overlap){ ModelState.AddModelError("", "overlap with existing timeslot");}
 
             if (!ModelState.IsValid)
             {
