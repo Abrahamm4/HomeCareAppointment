@@ -78,7 +78,15 @@ namespace HomeCareAppointment.Controllers
         // POST: AvailableDays/Create
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,PersonnelId,Date,StartTime,EndTime")] AvailableDay model)
-        {            if (ModelState.IsValid)
+        {            
+            if(model.Date<DateTime.Today){ModelState.AddModelError("Date", "Date cannot be a past date.");}
+            if(model.EndTime<=model.StartTime){ModelState.AddModelError("Endtime", "Endtime cannot be before StartTime.");}
+
+            var currentslots=await _days.GetAllAsync() ?? new List<AvailableDay>();
+            var sameDaySlots=currentslots.Where(s=>s.PersonnelId==model.PersonnelId&&s.Date.Date==model.Date.Date).ToList();
+            bool overlap=sameDaySlots.Any(s=>(model.StartTime<s.EndTime)&&(s.StartTime<model.EndTime));
+            if(overlap){ModelState.AddModelError("","Timeslot overlaps with a currently existing timeslot.");}
+            if (!ModelState.IsValid)
             {
                 var personnels = await _personnel.GetAllAsync();
                 ViewData["PersonnelId"] = new SelectList(personnels, "Id", "Name", model.PersonnelId);
@@ -127,6 +135,10 @@ namespace HomeCareAppointment.Controllers
         public async Task<IActionResult> Edit(int id, [Bind("Id,PersonnelId,Date,StartTime,EndTime")] AvailableDay model)
         {
             if (id != model.Id) return NotFound();
+            var currentslots=await _days.GetAllAsync() ?? new List<AvailableDay>();
+            var sameDaySlots=currentslots.Where(s=>s.PersonnelId==model.PersonnelId&&s.Date.Date==model.Date.Date).ToList();
+            bool overlap=sameDaySlots.Any(s=>(model.StartTime<s.EndTime)&&(s.StartTime<model.EndTime));
+            if(overlap){ModelState.AddModelError("","Timeslot overlaps with a currently existing timeslot.");}
 
             if (!ModelState.IsValid)
             {
